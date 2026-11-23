@@ -11,6 +11,9 @@
 </head>
 <body>
 <div class="ghost-layer" id="ghosts" aria-hidden="true"></div>
+<div class="screamer" id="screamer" aria-hidden="true">
+  <img src="assets/screamer.svg" alt="" />
+</div>
 <div class="app">
   <header>
     <div class="logo">
@@ -62,6 +65,7 @@
         <div class="hint">
           <span><kbd>Enter</kbd> отправить</span>
           <span><kbd>Shift</kbd> + <kbd>Enter</kbd> новая строка</span>
+          <span><kbd>/скример</kbd> напугать случайного гостя</span>
           <span id="chars"></span>
         </div>
       </div>
@@ -89,6 +93,6 @@
 </div>
 
 <script src="vendor/mqtt.min.js"></script>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>

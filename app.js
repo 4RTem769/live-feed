@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.LIVE_FEED_VERSION = '1.5.0';
+  window.LIVE_FEED_VERSION = '1.6.1';
 
   const $ = (id) => document.getElementById(id);
 
@@ -50,6 +50,7 @@
   const peopleEl = $('people');
   const ghostLayer = $('ghosts');
   const ghostToggle = $('ghostToggle');
+  const screamerEl = $('screamer');
   const nameModal = $('nameModal');
   const nameInput = $('nameInput');
   const nameGo = $('nameGo');
@@ -67,6 +68,10 @@
   let typingTimer = null;
   let typingActive = false;
   let lastTypingSent = 0;
+  let lastScreamerAt = 0;
+  let screaming = false;
+  let screamCtx = null;
+  const processedEvents = new Set();
 
   /* ---------- Утилиты ---------- */
 
@@ -104,6 +109,13 @@
   /* ---------- Рендер ---------- */
 
   function buildMessage(msg, prev) {
+    if (msg.kind === 'system') {
+      const note = document.createElement('div');
+      note.className = 'sys';
+      note.textContent = msg.text;
+      return note;
+    }
+
     const wrap = document.createElement('div');
     const mine = msg.clientId === clientId;
     wrap.className = 'msg anim' + (mine ? ' is-mine' : '');
@@ -310,6 +322,117 @@
     }
   }
 
+  /* ---------- Скример ---------- */
+
+  function pushSystem(text) {
+    messages.push({ id: rand(), kind: 'system', text, ts: Date.now() });
+    messages.sort((a, b) => a.ts - b.ts);
+    scheduleRender();
+  }
+
+  function playScreamer() {
+    if (screaming) return;
+    screaming = true;
+
+    try { navigator.vibrate && navigator.vibrate([180, 60, 220, 60, 300]); } catch {}
+
+    screamerEl.classList.add('on');
+    screamerEl.setAttribute('aria-hidden', 'false');
+    void screamerEl.offsetWidth;
+
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) {
+        screamCtx = screamCtx || new AC();
+        const ctx = screamCtx;
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+        const now = ctx.currentTime;
+
+        const osc = ctx.createOscillator();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(190, now);
+        osc.frequency.exponentialRampToValueAtTime(1300, now + 0.12);
+        osc.frequency.exponentialRampToValueAtTime(240, now + 1.15);
+
+        const lfo = ctx.createOscillator();
+        lfo.frequency.value = 23;
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.value = 70;
+        lfo.connect(lfoGain).connect(osc.frequency);
+
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.22, now + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.4);
+        osc.connect(gain).connect(ctx.destination);
+
+        const len = Math.floor(ctx.sampleRate * 1.3);
+        const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 1.6);
+        }
+        const noise = ctx.createBufferSource();
+        noise.buffer = buf;
+        const hp = ctx.createBiquadFilter();
+        hp.type = 'highpass';
+        hp.frequency.value = 1100;
+        const ng = ctx.createGain();
+        ng.gain.value = 0.16;
+        noise.connect(hp).connect(ng).connect(ctx.destination);
+
+        osc.start(now);
+        lfo.start(now);
+        noise.start(now);
+        osc.stop(now + 1.5);
+        lfo.stop(now + 1.5);
+      }
+    } catch {}
+
+    setTimeout(() => {
+      screamerEl.classList.remove('on');
+      screamerEl.setAttribute('aria-hidden', 'true');
+      screaming = false;
+    }, 2500);
+  }
+
+  function runScreamerCommand() {
+    const now = Date.now();
+    if (now - lastScreamerAt < 10000) {
+      pushSystem('⏳ Скример перезаряжается — подождите несколько секунд');
+      return;
+    }
+    if (!mqtt || !connected) {
+      pushSystem('⚠️ Нет связи — скример не отправлен');
+      return;
+    }
+
+    const people = [...online.values()];
+    if (!people.length) {
+      pushSystem('😶 На сайте никого нет — некого пугать');
+      return;
+    }
+
+    lastScreamerAt = now;
+    const others = people.filter((p) => p.clientId !== clientId);
+    const pool = others.length ? others : people;
+    const target = pool[Math.floor(Math.random() * pool.length)];
+    const eventId = rand();
+
+    processedEvents.add(eventId);
+    mqtt.publish(`${BASE}/x`, JSON.stringify({
+      id: eventId,
+      type: 'screamer',
+      target: target.clientId,
+      targetName: target.name,
+      from: myName,
+      ts: now,
+    }), { qos: 0 });
+
+    pushSystem(`😱 ${myName} наслал скримера на ${target.name}`);
+    if (target.clientId === clientId) playScreamer();
+  }
+
   function renderTyping() {    const names = [...typingUsers.values()];
     typingEl.innerHTML = '';
     if (!names.length) return;
@@ -417,7 +540,6 @@
 
     mqtt.on('connect', () => {
       connected = true;
-      setConn('live');
       online.set(clientId, {
         clientId,
         name: myName,
@@ -427,7 +549,8 @@
         lastSeen: Date.now(),
       });
       renderOnline();
-      mqtt.subscribe([`${BASE}/m/+`, `${BASE}/p/+`, `${BASE}/t`], { qos: 1 }, () => {
+      mqtt.subscribe([`${BASE}/m/+`, `${BASE}/p/+`, `${BASE}/t`, `${BASE}/x`], { qos: 1 }, () => {
+        setConn('live');
         publishPresence();
       });
       input.focus();
@@ -487,6 +610,13 @@
         if (data.typing) typingUsers.set(data.clientId, data.name);
         else typingUsers.delete(data.clientId);
         renderTyping();
+      } else if (topic === `${BASE}/x`) {
+        if (data.type !== 'screamer') return;
+        if (!data.ts || Date.now() - data.ts > 60000) return;
+        if (data.id && processedEvents.has(data.id)) return;
+        if (data.id) processedEvents.add(data.id);
+        pushSystem(`😱 ${data.from} наслал скримера на ${data.targetName}`);
+        if (data.target === clientId) playScreamer();
       }
     });
   }
@@ -523,6 +653,16 @@
   function send() {
     const text = input.value.trim();
     if (!text || !myName) return;
+
+    if (/^\/(скример|screamer)(\s|$)/i.test(text)) {
+      input.value = '';
+      autosize();
+      sendBtn.disabled = true;
+      stopTyping();
+      runScreamerCommand();
+      return;
+    }
+
     input.value = '';
     autosize();
     sendBtn.disabled = true;

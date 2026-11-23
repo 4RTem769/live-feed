@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <radialGradient id="skin" cx="50%" cy="40%" r="66%">
+      <stop offset="0" stop-color="#e9ece6"/>
+      <stop offset="45%" stop-color="#b6bfb8"/>
+      <stop offset="78%" stop-color="#77817c"/>
+      <stop offset="100%" stop-color="#39413f"/>
+    </radialGradient>
+    <radialGradient id="socket" cx="50%" cy="45%" r="60%">
+      <stop offset="0" stop-color="#000000"/>
+      <stop offset="70%" stop-color="#05070a"/>
+      <stop offset="100%" stop-color="#1b2422"/>
+    </radialGradient>
+    <radialGradient id="mouth" cx="50%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#120407"/>
+      <stop offset="55%" stop-color="#050203"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </radialGradient>
+    <radialGradient id="vig" cx="50%" cy="42%" r="72%">
+      <stop offset="42%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.96"/>
+    </radialGradient>
+    <linearGradient id="teeth" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3efe2"/>
+      <stop offset="100%" stop-color="#b6ad96"/>
+    </linearGradient>
+    <filter id="wobble" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.012 0.024" numOctaves="3" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="14" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="3"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.5"/>
+      </feComponentTransfer>
+    </filter>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="800" height="800" fill="#050607"/>
+
+  <g filter="url(#wobble)">
+    <!-- волосы -->
+    <path d="M180 330 C150 200 250 90 400 85 C555 80 660 190 630 335 C620 250 560 160 400 155 C250 150 195 240 180 330 Z" fill="#0b0f10"/>
+    <path d="M190 300 C160 420 165 520 150 640" stroke="#0b0f10" stroke-width="26" fill="none" stroke-linecap="round"/>
+    <path d="M615 295 C645 420 640 515 655 640" stroke="#0b0f10" stroke-width="26" fill="none" stroke-linecap="round"/>
+
+    <!-- лицо -->
+    <path d="M400 110 C540 110 612 220 612 360 C612 520 548 690 400 705 C252 690 188 520 188 360 C188 220 260 110 400 110 Z" fill="url(#skin)"/>
+
+    <!-- тени под скулами -->
+    <ellipse cx="295" cy="500" rx="80" ry="120" fill="#3d4744" opacity="0.35"/>
+    <ellipse cx="505" cy="500" rx="80" ry="120" fill="#3d4744" opacity="0.35"/>
+    <ellipse cx="400" cy="180" rx="120" ry="60" fill="#5d6763" opacity="0.25"/>
+
+    <!-- глаза -->
+    <ellipse cx="312" cy="352" rx="86" ry="104" fill="url(#socket)" transform="rotate(-8 312 352)"/>
+    <ellipse cx="488" cy="352" rx="86" ry="104" fill="url(#socket)" transform="rotate(8 488 352)"/>
+    <circle cx="320" cy="366" r="7" fill="#cfd8d4" opacity="0.9" filter="url(#glow)"/>
+    <circle cx="492" cy="366" r="7" fill="#cfd8d4" opacity="0.9" filter="url(#glow)"/>
+    <path d="M250 300 Q310 268 372 296" stroke="#39413f" stroke-width="6" fill="none" opacity="0.7"/>
+    <path d="M428 296 Q490 268 550 300" stroke="#39413f" stroke-width="6" fill="none" opacity="0.7"/>
+
+    <!-- нос -->
+    <path d="M400 400 L372 470 Q400 486 428 470 Z" fill="#6b7570" opacity="0.55"/>
+    <ellipse cx="388" cy="476" rx="9" ry="6" fill="#1a211f"/>
+    <ellipse cx="412" cy="476" rx="9" ry="6" fill="#1a211f"/>
+
+    <!-- рот -->
+    <path d="M268 540 Q400 492 532 540 Q556 690 400 722 Q244 690 268 540 Z" fill="url(#mouth)"/>
+    <g fill="url(#teeth)">
+      <path d="M296 543 L316 600 L334 546 Z"/>
+      <path d="M346 538 L362 596 L382 540 Z"/>
+      <path d="M418 540 L438 598 L454 538 Z"/>
+      <path d="M466 546 L484 600 L504 543 Z"/>
+      <path d="M300 690 L318 646 L336 700 Z"/>
+      <path d="M462 700 L482 646 L500 690 Z"/>
+    </g>
+    <path d="M400 620 Q430 640 400 668 Q370 640 400 620 Z" fill="#2a0a0e" opacity="0.9"/>
+
+    <!-- трещины -->
+    <path d="M330 250 L318 300 L336 330" stroke="#3b4340" stroke-width="4" fill="none" opacity="0.7"/>
+    <path d="M520 246 L536 296 L520 322" stroke="#3b4340" stroke-width="4" fill="none" opacity="0.7"/>
+    <path d="M400 205 L392 258 L408 286" stroke="#3b4340" stroke-width="3" fill="none" opacity="0.6"/>
+    <path d="M270 430 L255 470 L268 500" stroke="#3b4340" stroke-width="3" fill="none" opacity="0.55"/>
+    <path d="M534 424 L552 462 L538 496" stroke="#3b4340" stroke-width="3" fill="none" opacity="0.55"/>
+  </g>
+
+  <rect width="800" height="800" fill="url(#vig)"/>
+  <rect width="800" height="800" filter="url(#grain)" opacity="0.22"/>
+</svg>
