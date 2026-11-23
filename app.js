@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.LIVE_FEED_VERSION = '1.4.0';
+  window.LIVE_FEED_VERSION = '1.5.0';
 
   const $ = (id) => document.getElementById(id);
 
@@ -241,13 +241,16 @@
     const h = hashOf(person.clientId || person.name || '');
     const el = document.createElement('div');
     el.className = 'ghost' + (person.clientId === clientId ? ' mine' : '');
-    el.style.top = (4 + ((h >>> 7) % 62)) + '%';
+    el.style.left = (6 + ((h >>> 6) % 78)) + '%';
+    el.style.top = (6 + ((h >>> 7) % 64)) + '%';
 
-    const dur = 26 + (h % 24);
+    const dur = 9 + (h % 9);
     el.style.setProperty('--dur', dur + 's');
-    el.style.setProperty('--delay', -(h % dur) + 's');
+    el.style.setProperty('--delay', '-' + (h % (dur * 1000)) / 1000 + 's');
     el.style.setProperty('--bob', (3 + ((h >>> 3) % 4)) + 's');
     el.style.setProperty('--size', (46 + ((h >>> 11) % 26)) + 'px');
+    el.style.setProperty('--dx', (30 + ((h >>> 13) % 50)) + 'px');
+    el.style.setProperty('--dy', (-30 + ((h >>> 17) % 45)) + 'px');
 
     const inner = document.createElement('div');
     inner.className = 'ghost-inner';
@@ -275,19 +278,6 @@
     inner.append(svg, name);
     el.append(inner);
     ghostLayer.append(el);
-
-    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduceMotion) {
-      el.style.left = (8 + ((h >>> 5) % 64)) + '%';
-    } else {
-      const fly = el.animate([
-        { transform: 'translateX(-22vw) translateY(0px)' },
-        { transform: 'translateX(50vw) translateY(-3vh)', offset: 0.5 },
-        { transform: 'translateX(122vw) translateY(1vh)' },
-      ], { duration: dur * 1000, iterations: Infinity, easing: 'linear' });
-      fly.currentTime = h % (dur * 1000);
-      el.__fly = fly;
-    }
 
     return { el, name, color: person.color };
   }
