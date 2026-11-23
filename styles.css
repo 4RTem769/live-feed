@@ -609,8 +609,8 @@ body.no-ghosts .ghost-layer { display: none; }
 }
 
 @keyframes screamer-zoom {
-  from { transform: scale(1.02); }
-  to { transform: scale(1.45); }
+  from { transform: scale(1); }
+  to { transform: scale(1.16); }
 }
 
 @keyframes screamer-shake {
