@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.LIVE_FEED_VERSION = '1.3.0';
+  window.LIVE_FEED_VERSION = '1.4.0';
 
   const $ = (id) => document.getElementById(id);
 
@@ -275,6 +275,20 @@
     inner.append(svg, name);
     el.append(inner);
     ghostLayer.append(el);
+
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) {
+      el.style.left = (8 + ((h >>> 5) % 64)) + '%';
+    } else {
+      const fly = el.animate([
+        { transform: 'translateX(-22vw) translateY(0px)' },
+        { transform: 'translateX(50vw) translateY(-3vh)', offset: 0.5 },
+        { transform: 'translateX(122vw) translateY(1vh)' },
+      ], { duration: dur * 1000, iterations: Infinity, easing: 'linear' });
+      fly.currentTime = h % (dur * 1000);
+      el.__fly = fly;
+    }
+
     return { el, name, color: person.color };
   }
 

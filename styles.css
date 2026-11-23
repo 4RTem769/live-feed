@@ -490,7 +490,6 @@ body.no-ghosts .ghost-layer { display: none; }
 .ghost {
   position: absolute;
   left: 0;
-  animation: ghost-fly var(--dur, 32s) linear var(--delay, 0s) infinite;
   will-change: transform;
 }
 
