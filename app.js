@@ -5,7 +5,7 @@
 
   const $ = (id) => document.getElementById(id);
 
-  /* ---------- РљРѕРЅС„РёРіСѓСЂР°С†РёСЏ ---------- */
+  /* ---------- Конфигурация ---------- */
 
   const BROKER = 'wss://broker.emqx.io:8084/mqtt';
   const ROOM = (() => {
@@ -17,7 +17,7 @@
   const HISTORY_TTL = 3 * 24 * 60 * 60 * 1000;
   const PRESENCE_TTL = 90 * 1000;
 
-  /* ---------- РҐСЂР°РЅРёР»РёС‰Рµ ---------- */
+  /* ---------- Хранилище ---------- */
 
   const store = {
     get(key, fallback) {
@@ -40,7 +40,7 @@
   const myColor = colorFromId(clientId);
   const tabId = rand().slice(0, 18);
 
-  /* ---------- Р­Р»РµРјРµРЅС‚С‹ ---------- */
+  /* ---------- Элементы ---------- */
 
   const feed = $('feed');
   const input = $('input');
@@ -55,7 +55,7 @@
   const nameInput = $('nameInput');
   const nameGo = $('nameGo');
 
-  /* ---------- РЎРѕСЃС‚РѕСЏРЅРёРµ ---------- */
+  /* ---------- Состояние ---------- */
 
   let messages = [];
   const online = new Map();
@@ -73,7 +73,7 @@
   let screamCtx = null;
   const processedEvents = new Set();
 
-  /* ---------- РЈС‚РёР»РёС‚С‹ ---------- */
+  /* ---------- Утилиты ---------- */
 
   function colorFromId(id) {
     let h = 0;
@@ -94,8 +94,8 @@
     const today = new Date();
     const yest = new Date();
     yest.setDate(today.getDate() - 1);
-    if (d.toDateString() === today.toDateString()) return 'РЎРµРіРѕРґРЅСЏ';
-    if (d.toDateString() === yest.toDateString()) return 'Р’С‡РµСЂР°';
+    if (d.toDateString() === today.toDateString()) return 'Сегодня';
+    if (d.toDateString() === yest.toDateString()) return 'Вчера';
     return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
   }
 
@@ -106,7 +106,7 @@
     return many;
   }
 
-  /* ---------- Р РµРЅРґРµСЂ ---------- */
+  /* ---------- Рендер ---------- */
 
   function buildMessage(msg, prev) {
     if (msg.kind === 'system') {
@@ -160,10 +160,10 @@
       empty.className = 'empty';
       const emoji = document.createElement('span');
       emoji.className = 'emoji';
-      emoji.textContent = 'рџ‘Ђ';
+      emoji.textContent = '👀';
       const b = document.createElement('b');
-      b.textContent = 'РџРѕРєР° С‚РёС…Рѕ';
-      empty.append(emoji, b, document.createTextNode('РќР°РїРёС€РёС‚Рµ РїРµСЂРІРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ вЂ” Рё РµРіРѕ СѓРІРёРґСЏС‚ РІСЃРµ, РєС‚Рѕ СЃРµР№С‡Р°СЃ РЅР° СЃР°Р№С‚Рµ.'));
+      b.textContent = 'Пока тихо';
+      empty.append(emoji, b, document.createTextNode('Напишите первое сообщение — и его увидят все, кто сейчас на сайте.'));
       feed.append(empty);
     } else {
       let prev = null;
@@ -193,7 +193,7 @@
 
   function updateCount() {
     const n = messages.length;
-    $('msgCount').textContent = n === 0 ? 'РїРѕРєР° РїСѓСЃС‚Рѕ' : `${n} ${plural(n, 'СЃРѕРѕР±С‰РµРЅРёРµ', 'СЃРѕРѕР±С‰РµРЅРёСЏ', 'СЃРѕРѕР±С‰РµРЅРёР№')}`;
+    $('msgCount').textContent = n === 0 ? 'пока пусто' : `${n} ${plural(n, 'сообщение', 'сообщения', 'сообщений')}`;
   }
 
   function scrollToBottom(instant) {
@@ -222,7 +222,7 @@
       if (person.clientId === clientId) {
         const you = document.createElement('span');
         you.className = 'you';
-        you.textContent = 'РІС‹';
+        you.textContent = 'вы';
         li.append(you);
       }
       peopleEl.append(li);
@@ -231,13 +231,13 @@
       const li = document.createElement('li');
       li.style.color = 'var(--muted)';
       li.style.fontSize = '13px';
-      li.textContent = 'РќРёРєРѕРіРѕ РЅРµС‚вЂ¦';
+      li.textContent = 'Никого нет…';
       peopleEl.append(li);
     }
     syncGhosts(people);
   }
 
-  /* ---------- РџСЂРёР·СЂР°РєРё ---------- */
+  /* ---------- Призраки ---------- */
 
   const GHOST_PATH = 'M32 5C17.6 5 6 16.6 6 31v39.5c0 3.2 3.7 4.8 6 2.6l6.4-6.3c1.4-1.4 3.7-1.4 5.1 0l5.8 5.8c1.4 1.4 3.7 1.4 5.1 0l5.8-5.8c1.4-1.4 3.7-1.4 5.1 0l6.4 6.3c2.3 2.2 6 .6 6-2.6V31C58 16.6 46.4 5 32 5z';
   const ghostEls = new Map();
@@ -322,7 +322,7 @@
     }
   }
 
-  /* ---------- РЎРєСЂРёРјРµСЂ ---------- */
+  /* ---------- Скример ---------- */
 
   function pushSystem(text) {
     messages.push({ id: rand(), kind: 'system', text, ts: Date.now() });
@@ -399,17 +399,17 @@
   function runScreamerCommand() {
     const now = Date.now();
     if (now - lastScreamerAt < 10000) {
-      pushSystem('вЏі РЎРєСЂРёРјРµСЂ РїРµСЂРµР·Р°СЂСЏР¶Р°РµС‚СЃСЏ вЂ” РїРѕРґРѕР¶РґРёС‚Рµ РЅРµСЃРєРѕР»СЊРєРѕ СЃРµРєСѓРЅРґ');
+      pushSystem('⏳ Скример перезаряжается — подождите несколько секунд');
       return;
     }
     if (!mqtt || !connected) {
-      pushSystem('вљ пёЏ РќРµС‚ СЃРІСЏР·Рё вЂ” СЃРєСЂРёРјРµСЂ РЅРµ РѕС‚РїСЂР°РІР»РµРЅ');
+      pushSystem('⚠️ Нет связи — скример не отправлен');
       return;
     }
 
     const people = [...online.values()].filter((p) => Date.now() - (p.lastSeen || 0) < 60000);
     if (!people.length) {
-      pushSystem('рџ¶ РќР° СЃР°Р№С‚Рµ РЅРёРєРѕРіРѕ РЅРµС‚ вЂ” РЅРµРєРѕРіРѕ РїСѓРіР°С‚СЊ');
+      pushSystem('😶 На сайте никого нет — некого пугать');
       return;
     }
 
@@ -429,14 +429,14 @@
       ts: now,
     }), { qos: 0 });
 
-    pushSystem(`рџ± ${myName} РЅР°СЃР»Р°Р» СЃРєСЂРёРјРµСЂР° РЅР° ${target.name}`);
+    pushSystem(`😱 ${myName} наслал скримера на ${target.name}`);
     if (target.clientId === clientId) playScreamer();
   }
 
   function renderTyping() {    const names = [...typingUsers.values()];
     typingEl.innerHTML = '';
     if (!names.length) return;
-    const label = names.length === 1 ? `${names[0]} РїРµС‡Р°С‚Р°РµС‚` : `${names.length} С‡РµР»РѕРІРµРєР° РїРµС‡Р°С‚Р°СЋС‚`;
+    const label = names.length === 1 ? `${names[0]} печатает` : `${names.length} человека печатают`;
     const span = document.createElement('span');
     span.textContent = label;
     const b = document.createElement('span');
@@ -451,23 +451,23 @@
     const tag = $('liveTag');
     if (state === 'live') {
       dot.className = 'dot live';
-      text.textContent = 'РІ СЌС„РёСЂРµ';
+      text.textContent = 'в эфире';
       tag.classList.remove('off');
       tag.innerHTML = '<span class="dot live"></span>live';
     } else if (state === 'connecting') {
       dot.className = 'dot';
-      text.textContent = 'РїРѕРґРєР»СЋС‡РµРЅРёРµвЂ¦';
+      text.textContent = 'подключение…';
       tag.classList.add('off');
-      tag.innerHTML = '<span class="dot"></span>РѕС„Р»Р°Р№РЅ';
+      tag.innerHTML = '<span class="dot"></span>офлайн';
     } else {
       dot.className = 'dot';
-      text.textContent = 'РЅРµС‚ СЃРІСЏР·Рё';
+      text.textContent = 'нет связи';
       tag.classList.add('off');
-      tag.innerHTML = '<span class="dot"></span>РѕС„Р»Р°Р№РЅ';
+      tag.innerHTML = '<span class="dot"></span>офлайн';
     }
   }
 
-  /* ---------- РЎРѕРѕР±С‰РµРЅРёСЏ ---------- */
+  /* ---------- Сообщения ---------- */
 
   function addMessage(msg, isIncoming) {
     if (!msg || !msg.id || !msg.text) return;
@@ -482,7 +482,7 @@
       renderTyping();
       if (!stickToBottom) {
         unread++;
-        jumpBtn.textContent = `в†“ РќРѕРІС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ (${unread})`;
+        jumpBtn.textContent = `↓ Новые сообщения (${unread})`;
         jumpBtn.classList.add('show');
       }
     }
@@ -615,7 +615,7 @@
         if (!data.ts || Date.now() - data.ts > 60000) return;
         if (data.id && processedEvents.has(data.id)) return;
         if (data.id) processedEvents.add(data.id);
-        pushSystem(`рџ± ${data.from} РЅР°СЃР»Р°Р» СЃРєСЂРёРјРµСЂР° РЅР° ${data.targetName}`);
+        pushSystem(`😱 ${data.from} наслал скримера на ${data.targetName}`);
         if (data.target === clientId) playScreamer();
       }
     });
@@ -628,19 +628,20 @@
       if (Date.now() - person.lastSeen > PRESENCE_TTL) {
         online.delete(id);
         changed = true;
-      }    }
+      }
+    }
     if (changed) renderOnline();
   }, 20_000);
 
   setInterval(() => {
     for (const [id, name] of typingUsers) {
-      // С‡РёСЃС‚РёРј В«РїРµС‡Р°С‚Р°РµС‚В», РµСЃР»Рё С‡РµР»РѕРІРµРє РґР°РІРЅРѕ РјРѕР»С‡РёС‚
+      // чистим «печатает», если человек давно молчит
       if (!online.has(id)) typingUsers.delete(id);
     }
     renderTyping();
   }, 5000);
 
-  /* ---------- Р’РІРѕРґ ---------- */
+  /* ---------- Ввод ---------- */
 
   function autosize() {
     input.style.height = 'auto';
@@ -653,7 +654,7 @@
     const text = input.value.trim();
     if (!text || !myName) return;
 
-    if (/^\/(СЃРєСЂРёРјРµСЂ|screamer)(\s|$)/i.test(text)) {
+    if (/^\/(скример|screamer)(\s|$)/i.test(text)) {
       input.value = '';
       autosize();
       sendBtn.disabled = true;
@@ -667,7 +668,7 @@
     sendBtn.disabled = true;
     stopTyping();
     if (!connected) {
-      alert('РќРµС‚ СЃРІСЏР·Рё СЃ Р»РµРЅС‚РѕР№. РџСЂРѕРІРµСЂСЊС‚Рµ РёРЅС‚РµСЂРЅРµС‚ вЂ” СЃРѕРѕР±С‰РµРЅРёРµ РЅРµ РѕС‚РїСЂР°РІР»РµРЅРѕ.');
+      alert('Нет связи с лентой. Проверьте интернет — сообщение не отправлено.');
       input.value = text;
       autosize();
       return;
@@ -703,16 +704,16 @@
     }
   }
 
-  /* ---------- РРјСЏ ---------- */
+  /* ---------- Имя ---------- */
 
   function applyName(name) {
-    myName = name.trim().slice(0, 32) || 'РђРЅРѕРЅРёРј';
+    myName = name.trim().slice(0, 32) || 'Аноним';
     store.set('livefeed.name', myName);
     $('myName').textContent = myName;
     $('myAvatar').textContent = initials(myName);
     $('myAvatar').style.background = myColor;
     $('myAvatar').title = myName;
-    document.title = `Live-Р»РµРЅС‚Р° вЂ” ${myName}`;
+    document.title = `Live-лента — ${myName}`;
   }
 
   function openNameModal() {
@@ -743,7 +744,7 @@
 
   $('renameBtn').addEventListener('click', openNameModal);
 
-  /* ---------- РџРµСЂРµРєР»СЋС‡Р°С‚РµР»СЊ РїСЂРёР·СЂР°РєРѕРІ ---------- */
+  /* ---------- Переключатель призраков ---------- */
 
   function setGhosts(on) {
     document.body.classList.toggle('no-ghosts', !on);
@@ -758,7 +759,7 @@
 
   setGhosts(store.get('livefeed.ghosts', '1') !== '0');
 
-  /* ---------- РЎРѕР±С‹С‚РёСЏ ---------- */
+  /* ---------- События ---------- */
 
   feed.addEventListener('scroll', () => {
     const distance = feed.scrollHeight - feed.scrollTop - feed.clientHeight;
@@ -804,7 +805,7 @@
     }
   });
 
-  /* ---------- РЎС‚Р°СЂС‚ ---------- */
+  /* ---------- Старт ---------- */
 
   autosize();
   setConn('connecting');
@@ -815,8 +816,8 @@
     applyName(myName);
     connect();
   } else {
-    applyName('Р“РѕСЃС‚СЊ');
+    applyName('Гость');
     openNameModal();
-    $('myName').textContent = 'Р“РѕСЃС‚СЊ';
+    $('myName').textContent = 'Гость';
   }
 })();

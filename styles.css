@@ -41,7 +41,7 @@
     gap: 14px;
   }
 
-  /* ---------- Р РЃР В°Р С—Р С”Р В° ---------- */
+  /* ---------- Шапка ---------- */
   header {
     display: flex;
     align-items: center;
@@ -141,7 +141,7 @@
   }
   .me-chip button:hover { color: var(--text); background: var(--panel-strong); }
 
-  /* ---------- Р С™Р В°РЎР‚Р С”Р В°РЎРѓ ---------- */
+  /* ---------- Каркас ---------- */
   .layout {
     display: grid;
     grid-template-columns: 1fr 272px;
@@ -160,7 +160,7 @@
     box-shadow: var(--shadow);
   }
 
-  /* ---------- Р вЂєР ВµР Р…РЎвЂљР В° ---------- */
+  /* ---------- Лента ---------- */
   .feed-head {
     display: flex;
     align-items: center;
@@ -209,7 +209,7 @@
   .empty .emoji { font-size: 44px; display: block; margin-bottom: 10px; }
   .empty b { color: var(--text); display: block; font-size: 17px; margin-bottom: 6px; }
 
-  /* ---------- Р РЋР С•Р С•Р В±РЎвЂ°Р ВµР Р…Р С‘Р Вµ ---------- */
+  /* ---------- Сообщение ---------- */
   .msg {
     display: grid;
     grid-template-columns: 40px 1fr;
@@ -309,7 +309,7 @@
   }
   .jump.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 
-  /* ---------- Р С™Р С•Р СР С—Р С•Р В·Р ВµРЎР‚ ---------- */
+  /* ---------- Композер ---------- */
   .composer { border-top: 1px solid var(--line); padding: 12px 14px; flex: none; }
 
   .composer-inner {
@@ -367,7 +367,7 @@
     color: #a7adbf;
   }
 
-  /* ---------- Р С›Р Р…Р В»Р В°Р в„–Р Р… ---------- */
+  /* ---------- Онлайн ---------- */
   .side-head {
     padding: 16px 18px 12px;
     display: flex;
@@ -409,7 +409,7 @@
     line-height: 1.6;
   }
 
-  /* ---------- Р СљР С•Р Т‘Р В°Р В»Р С”Р В° Р С‘Р СР ВµР Р…Р С‘ ---------- */
+  /* ---------- Модалка имени ---------- */
   .modal {
     position: fixed;
     inset: 0;
@@ -458,7 +458,7 @@
   }
   .card .go:disabled { opacity: 0.4; }
 
-  /* ---------- Р С’Р Т‘Р В°Р С—РЎвЂљР С‘Р Р† ---------- */
+  /* ---------- Адаптив ---------- */
   @media (max-width: 760px) {
     .layout { grid-template-columns: 1fr; }
     .sidebar { display: none; }
@@ -474,8 +474,8 @@
     .me-chip span { max-width: 84px; }
     .hint { display: none; }
   }
-/* ---------- Р›РµС‚Р°СЋС‰РёРµ РїСЂРёР·СЂР°РєРё ---------- */
 
+/* ghosts + screamer */
 .ghost-layer {
   position: fixed;
   inset: 0;
@@ -564,7 +564,6 @@ body.no-ghosts .ghost-layer { display: none; }
   .ghost { animation: none; }
   .ghost-inner { animation: none; }
 }
-/* ---------- Скример ---------- */
 
 .screamer {
   position: fixed;
