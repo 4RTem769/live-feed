@@ -581,7 +581,7 @@ body.no-ghosts .ghost-layer { display: none; }
 .screamer img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   filter: contrast(1.35) saturate(0.75);
   animation: screamer-zoom 2.4s ease-out forwards;
 }
@@ -609,8 +609,8 @@ body.no-ghosts .ghost-layer { display: none; }
 }
 
 @keyframes screamer-zoom {
-  from { transform: scale(1.05); }
-  to { transform: scale(1.85); }
+  from { transform: scale(1.02); }
+  to { transform: scale(1.45); }
 }
 
 @keyframes screamer-shake {
