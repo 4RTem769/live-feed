@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Live-лента — смотри, что происходит</title>
+<title>Live-Р»РµРЅС‚Р° вЂ” СЃРјРѕС‚СЂРё, С‡С‚Рѕ РїСЂРѕРёСЃС…РѕРґРёС‚</title>
 <meta name="theme-color" content="#0e0f13" />
-<meta name="description" content="Общая live-лента: любой посетитель видит, что происходит на сайте, в реальном времени." />
+<meta name="description" content="РћР±С‰Р°СЏ live-Р»РµРЅС‚Р°: Р»СЋР±РѕР№ РїРѕСЃРµС‚РёС‚РµР»СЊ РІРёРґРёС‚, С‡С‚Рѕ РїСЂРѕРёСЃС…РѕРґРёС‚ РЅР° СЃР°Р№С‚Рµ, РІ СЂРµР°Р»СЊРЅРѕРј РІСЂРµРјРµРЅРё." />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E" />
 <link rel="stylesheet" href="styles.css" />
 </head>
@@ -17,66 +17,66 @@
 <div class="app">
   <header>
     <div class="logo">
-      <div class="bolt">⚡</div>
+      <div class="bolt">вљЎ</div>
       <div class="txt">
-        Live-лента
-        <small>смотри, что происходит прямо сейчас</small>
+        Live-Р»РµРЅС‚Р°
+        <small>СЃРјРѕС‚СЂРё, С‡С‚Рѕ РїСЂРѕРёСЃС…РѕРґРёС‚ РїСЂСЏРјРѕ СЃРµР№С‡Р°СЃ</small>
       </div>
     </div>
     <div class="spacer"></div>
-    <button class="ghost-toggle" id="ghostToggle" title="Показать или скрыть призраков" aria-pressed="true">👻</button>
+    <button class="ghost-toggle" id="ghostToggle" title="РџРѕРєР°Р·Р°С‚СЊ РёР»Рё СЃРєСЂС‹С‚СЊ РїСЂРёР·СЂР°РєРѕРІ" aria-pressed="true">рџ‘»</button>
     <div class="pill hide-sm">
       <span class="dot" id="connDot"></span>
-      <span id="connText">подключение…</span>
+      <span id="connText">РїРѕРґРєР»СЋС‡РµРЅРёРµвЂ¦</span>
     </div>
     <div class="pill">
       <span class="dot live"></span>
-      <b id="onlineCount">0</b> онлайн
+      <b id="onlineCount">0</b> РѕРЅР»Р°Р№РЅ
     </div>
     <div class="me-chip">
       <div class="avatar" id="myAvatar" style="width:30px;height:30px;font-size:12px;border-radius:9px">?</div>
-      <span id="myName">Гость</span>
-      <button id="renameBtn" title="Сменить имя">✎</button>
+      <span id="myName">Р“РѕСЃС‚СЊ</span>
+      <button id="renameBtn" title="РЎРјРµРЅРёС‚СЊ РёРјСЏ">вњЋ</button>
     </div>
   </header>
 
   <div class="layout">
     <main class="panel">
       <div class="feed-head">
-        <strong>Общая лента</strong>
-        <span id="msgCount">0 сообщений</span>
+        <strong>РћР±С‰Р°СЏ Р»РµРЅС‚Р°</strong>
+        <span id="msgCount">0 СЃРѕРѕР±С‰РµРЅРёР№</span>
         <span class="live-tag" id="liveTag"><span class="dot live"></span>live</span>
       </div>
 
       <div class="feed-wrap">
         <div class="feed" id="feed"></div>
-        <button class="jump" id="jumpBtn">↓ Новые сообщения</button>
+        <button class="jump" id="jumpBtn">в†“ РќРѕРІС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ</button>
       </div>
 
       <div class="typing" id="typing"></div>
 
       <div class="composer">
         <form class="composer-inner" id="composer">
-          <textarea id="input" rows="1" placeholder="Напишите что угодно — это увидят все…" maxlength="2000"></textarea>
-          <button class="send" id="sendBtn" type="submit" title="Отправить" disabled>
+          <textarea id="input" rows="1" placeholder="РќР°РїРёС€РёС‚Рµ С‡С‚Рѕ СѓРіРѕРґРЅРѕ вЂ” СЌС‚Рѕ СѓРІРёРґСЏС‚ РІСЃРµвЂ¦" maxlength="2000"></textarea>
+          <button class="send" id="sendBtn" type="submit" title="РћС‚РїСЂР°РІРёС‚СЊ" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l16-8-6 16-3.5-6.5L4 12z"/></svg>
           </button>
         </form>
         <div class="hint">
-          <span><kbd>Enter</kbd> отправить</span>
-          <span><kbd>Shift</kbd> + <kbd>Enter</kbd> новая строка</span>
-          <span><kbd>/скример</kbd> напугать случайного гостя</span>
+          <span><kbd>Enter</kbd> РѕС‚РїСЂР°РІРёС‚СЊ</span>
+          <span><kbd>Shift</kbd> + <kbd>Enter</kbd> РЅРѕРІР°СЏ СЃС‚СЂРѕРєР°</span>
+          <span><kbd>/СЃРєСЂРёРјРµСЂ</kbd> РЅР°РїСѓРіР°С‚СЊ СЃР»СѓС‡Р°Р№РЅРѕРіРѕ РіРѕСЃС‚СЏ</span>
           <span id="chars"></span>
         </div>
       </div>
     </main>
 
     <aside class="panel sidebar">
-      <div class="side-head">Сейчас на сайте <span class="count" id="sideCount">0</span></div>
+      <div class="side-head">РЎРµР№С‡Р°СЃ РЅР° СЃР°Р№С‚Рµ <span class="count" id="sideCount">0</span></div>
       <ul class="people" id="people"></ul>
       <div class="side-foot">
-        Каждый видит ленту в реальном времени.<br />
-        Отправьте другу ссылку на эту страницу — и следите вместе.
+        РљР°Р¶РґС‹Р№ РІРёРґРёС‚ Р»РµРЅС‚Сѓ РІ СЂРµР°Р»СЊРЅРѕРј РІСЂРµРјРµРЅРё.<br />
+        РћС‚РїСЂР°РІСЊС‚Рµ РґСЂСѓРіСѓ СЃСЃС‹Р»РєСѓ РЅР° СЌС‚Сѓ СЃС‚СЂР°РЅРёС†Сѓ вЂ” Рё СЃР»РµРґРёС‚Рµ РІРјРµСЃС‚Рµ.
       </div>
     </aside>
   </div>
@@ -84,15 +84,15 @@
 
 <div class="modal hidden" id="nameModal">
   <div class="card">
-    <h1>Как вас зовут?</h1>
-    <p>Имя увидят все, кто сейчас следит за лентой.</p>
-    <label for="nameInput">Ваше имя</label>
-    <input id="nameInput" maxlength="32" placeholder="Например, Аня" autocomplete="nickname" />
-    <button class="go" id="nameGo" disabled>Войти в ленту</button>
+    <h1>РљР°Рє РІР°СЃ Р·РѕРІСѓС‚?</h1>
+    <p>РРјСЏ СѓРІРёРґСЏС‚ РІСЃРµ, РєС‚Рѕ СЃРµР№С‡Р°СЃ СЃР»РµРґРёС‚ Р·Р° Р»РµРЅС‚РѕР№.</p>
+    <label for="nameInput">Р’Р°С€Рµ РёРјСЏ</label>
+    <input id="nameInput" maxlength="32" placeholder="РќР°РїСЂРёРјРµСЂ, РђРЅСЏ" autocomplete="nickname" />
+    <button class="go" id="nameGo" disabled>Р’РѕР№С‚Рё РІ Р»РµРЅС‚Сѓ</button>
   </div>
 </div>
 
 <script src="vendor/mqtt.min.js"></script>
-<script src="app.js?v=15"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>
