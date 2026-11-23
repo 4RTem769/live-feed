@@ -368,16 +368,20 @@
         addMessage(data, true);
       } else if (topic.startsWith(`${BASE}/p/`)) {
         const tab = topic.slice(`${BASE}/p/`.length);
-        const person = {
+        if (data.ts && Date.now() - data.ts > PRESENCE_TTL) {
+          mqtt.publish(topic, '', { qos: 0, retain: true });
+          return;
+        }
+        const prev = online.get(data.clientId);
+        if (prev && prev.ts > (data.ts || 0)) return;
+        online.set(data.clientId, {
           clientId: data.clientId,
           name: data.name,
           color: data.color,
           tabId: tab,
+          ts: data.ts || Date.now(),
           lastSeen: Date.now(),
-        };
-        const prev = online.get(data.clientId);
-        if (prev) person.lastSeen = Date.now();
-        online.set(data.clientId, person);
+        });
         renderOnline();
       } else if (topic === `${BASE}/t`) {
         if (!data.clientId || data.clientId === clientId) return;
