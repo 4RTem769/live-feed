@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.LIVE_FEED_VERSION = '1.2.0';
+  window.LIVE_FEED_VERSION = '1.3.0';
 
   const $ = (id) => document.getElementById(id);
 
@@ -48,6 +48,8 @@
   const jumpBtn = $('jumpBtn');
   const typingEl = $('typing');
   const peopleEl = $('people');
+  const ghostLayer = $('ghosts');
+  const ghostToggle = $('ghostToggle');
   const nameModal = $('nameModal');
   const nameInput = $('nameInput');
   const nameGo = $('nameGo');
@@ -220,10 +222,89 @@
       li.textContent = 'Никого нет…';
       peopleEl.append(li);
     }
+    syncGhosts(people);
   }
 
-  function renderTyping() {
-    const names = [...typingUsers.values()];
+  /* ---------- Призраки ---------- */
+
+  const GHOST_PATH = 'M32 5C17.6 5 6 16.6 6 31v39.5c0 3.2 3.7 4.8 6 2.6l6.4-6.3c1.4-1.4 3.7-1.4 5.1 0l5.8 5.8c1.4 1.4 3.7 1.4 5.1 0l5.8-5.8c1.4-1.4 3.7-1.4 5.1 0l6.4 6.3c2.3 2.2 6 .6 6-2.6V31C58 16.6 46.4 5 32 5z';
+  const ghostEls = new Map();
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+
+  function hashOf(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
+    return h >>> 0;
+  }
+
+  function makeGhost(person) {
+    const h = hashOf(person.clientId || person.name || '');
+    const el = document.createElement('div');
+    el.className = 'ghost' + (person.clientId === clientId ? ' mine' : '');
+    el.style.top = (4 + ((h >>> 7) % 62)) + '%';
+
+    const dur = 26 + (h % 24);
+    el.style.setProperty('--dur', dur + 's');
+    el.style.setProperty('--delay', -(h % dur) + 's');
+    el.style.setProperty('--bob', (3 + ((h >>> 3) % 4)) + 's');
+    el.style.setProperty('--size', (46 + ((h >>> 11) % 26)) + 'px');
+
+    const inner = document.createElement('div');
+    inner.className = 'ghost-inner';
+
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 64 84');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', GHOST_PATH);
+    path.setAttribute('fill', person.color || colorFromId(person.clientId || ''));
+    svg.append(path);
+    for (const cx of [23, 41]) {
+      const eye = document.createElementNS(SVG_NS, 'circle');
+      eye.setAttribute('cx', String(cx));
+      eye.setAttribute('cy', '33');
+      eye.setAttribute('r', '4.2');
+      eye.setAttribute('fill', '#0b0c10');
+      svg.append(eye);
+    }
+
+    const name = document.createElement('span');
+    name.className = 'ghost-name';
+    name.textContent = person.name;
+
+    inner.append(svg, name);
+    el.append(inner);
+    ghostLayer.append(el);
+    return { el, name, color: person.color };
+  }
+
+  function syncGhosts(people) {
+    const ids = new Set(people.map((p) => p.clientId));
+
+    for (const [id, ghost] of ghostEls) {
+      if (ids.has(id)) continue;
+      ghostEls.delete(id);
+      ghost.el.classList.add('leaving');
+      setTimeout(() => ghost.el.remove(), 550);
+    }
+
+    for (const person of people) {
+      const ghost = ghostEls.get(person.clientId);
+      if (!ghost) {
+        ghostEls.set(person.clientId, makeGhost(person));
+        continue;
+      }
+      if (ghost.name.textContent !== person.name) ghost.name.textContent = person.name;
+      if (ghost.color !== person.color) {
+        ghost.color = person.color;
+        const path = ghost.el.querySelector('path');
+        if (path) path.setAttribute('fill', person.color || colorFromId(person.clientId));
+      }
+      ghost.el.classList.toggle('mine', person.clientId === clientId);
+    }
+  }
+
+  function renderTyping() {    const names = [...typingUsers.values()];
     typingEl.innerHTML = '';
     if (!names.length) return;
     const label = names.length === 1 ? `${names[0]} печатает` : `${names.length} человека печатают`;
@@ -516,6 +597,21 @@
   });
 
   $('renameBtn').addEventListener('click', openNameModal);
+
+  /* ---------- Переключатель призраков ---------- */
+
+  function setGhosts(on) {
+    document.body.classList.toggle('no-ghosts', !on);
+    ghostToggle.classList.toggle('off', !on);
+    ghostToggle.setAttribute('aria-pressed', String(on));
+    store.set('livefeed.ghosts', on ? '1' : '0');
+  }
+
+  ghostToggle.addEventListener('click', () => {
+    setGhosts(document.body.classList.contains('no-ghosts'));
+  });
+
+  setGhosts(store.get('livefeed.ghosts', '1') !== '0');
 
   /* ---------- События ---------- */
 

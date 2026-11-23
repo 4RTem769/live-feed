@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+<div class="ghost-layer" id="ghosts" aria-hidden="true"></div>
 <div class="app">
   <header>
     <div class="logo">
@@ -20,6 +21,7 @@
       </div>
     </div>
     <div class="spacer"></div>
+    <button class="ghost-toggle" id="ghostToggle" title="Показать или скрыть призраков" aria-pressed="true">👻</button>
     <div class="pill hide-sm">
       <span class="dot" id="connDot"></span>
       <span id="connText">подключение…</span>
@@ -87,6 +89,6 @@
 </div>
 
 <script src="vendor/mqtt.min.js"></script>
-<script src="app.js?v=4"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>

@@ -41,7 +41,7 @@
     gap: 14px;
   }
 
-  /* ---------- РЁР°РїРєР° ---------- */
+  /* ---------- Р РЃР В°Р С—Р С”Р В° ---------- */
   header {
     display: flex;
     align-items: center;
@@ -141,7 +141,7 @@
   }
   .me-chip button:hover { color: var(--text); background: var(--panel-strong); }
 
-  /* ---------- РљР°СЂРєР°СЃ ---------- */
+  /* ---------- Р С™Р В°РЎР‚Р С”Р В°РЎРѓ ---------- */
   .layout {
     display: grid;
     grid-template-columns: 1fr 272px;
@@ -160,7 +160,7 @@
     box-shadow: var(--shadow);
   }
 
-  /* ---------- Р›РµРЅС‚Р° ---------- */
+  /* ---------- Р вЂєР ВµР Р…РЎвЂљР В° ---------- */
   .feed-head {
     display: flex;
     align-items: center;
@@ -209,7 +209,7 @@
   .empty .emoji { font-size: 44px; display: block; margin-bottom: 10px; }
   .empty b { color: var(--text); display: block; font-size: 17px; margin-bottom: 6px; }
 
-  /* ---------- РЎРѕРѕР±С‰РµРЅРёРµ ---------- */
+  /* ---------- Р РЋР С•Р С•Р В±РЎвЂ°Р ВµР Р…Р С‘Р Вµ ---------- */
   .msg {
     display: grid;
     grid-template-columns: 40px 1fr;
@@ -309,7 +309,7 @@
   }
   .jump.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 
-  /* ---------- РљРѕРјРїРѕР·РµСЂ ---------- */
+  /* ---------- Р С™Р С•Р СР С—Р С•Р В·Р ВµРЎР‚ ---------- */
   .composer { border-top: 1px solid var(--line); padding: 12px 14px; flex: none; }
 
   .composer-inner {
@@ -367,7 +367,7 @@
     color: #a7adbf;
   }
 
-  /* ---------- РћРЅР»Р°Р№РЅ ---------- */
+  /* ---------- Р С›Р Р…Р В»Р В°Р в„–Р Р… ---------- */
   .side-head {
     padding: 16px 18px 12px;
     display: flex;
@@ -409,7 +409,7 @@
     line-height: 1.6;
   }
 
-  /* ---------- РњРѕРґР°Р»РєР° РёРјРµРЅРё ---------- */
+  /* ---------- Р СљР С•Р Т‘Р В°Р В»Р С”Р В° Р С‘Р СР ВµР Р…Р С‘ ---------- */
   .modal {
     position: fixed;
     inset: 0;
@@ -458,7 +458,7 @@
   }
   .card .go:disabled { opacity: 0.4; }
 
-  /* ---------- РђРґР°РїС‚РёРІ ---------- */
+  /* ---------- Р С’Р Т‘Р В°Р С—РЎвЂљР С‘Р Р† ---------- */
   @media (max-width: 760px) {
     .layout { grid-template-columns: 1fr; }
     .sidebar { display: none; }
@@ -474,3 +474,87 @@
     .me-chip span { max-width: 84px; }
     .hint { display: none; }
   }
+/* ---------- Р›РµС‚Р°СЋС‰РёРµ РїСЂРёР·СЂР°РєРё ---------- */
+
+.ghost-layer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0.55;
+}
+
+body.no-ghosts .ghost-layer { display: none; }
+
+.ghost {
+  position: absolute;
+  left: 0;
+  animation: ghost-fly var(--dur, 32s) linear var(--delay, 0s) infinite;
+  will-change: transform;
+}
+
+.ghost-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  animation: ghost-bob var(--bob, 4s) ease-in-out infinite alternate;
+  transition: opacity 0.5s ease;
+}
+
+.ghost svg {
+  width: var(--size, 54px);
+  height: auto;
+  opacity: 0.9;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.4));
+}
+
+.ghost-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(10, 11, 15, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #dfe3ee;
+  white-space: nowrap;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ghost.leaving .ghost-inner { opacity: 0; }
+
+.ghost-toggle {
+  width: 36px;
+  height: 36px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  font-size: 17px;
+  border-radius: 11px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  transition: background 0.15s, opacity 0.15s, transform 0.15s;
+}
+.ghost-toggle:hover { background: var(--panel-strong); }
+.ghost-toggle:active { transform: scale(0.94); }
+.ghost-toggle.off { opacity: 0.4; }
+
+@keyframes ghost-fly {
+  from { transform: translateX(-20vw) translateY(0); }
+  50% { transform: translateX(50vw) translateY(-3vh); }
+  to { transform: translateX(120vw) translateY(1vh); }
+}
+
+@keyframes ghost-bob {
+  from { transform: translateY(-6px) rotate(-2.5deg); }
+  to { transform: translateY(8px) rotate(2.5deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ghost { animation: none; left: 50%; }
+  .ghost-inner { animation: none; }
+}
