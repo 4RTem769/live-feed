@@ -279,6 +279,8 @@
   }
 
   function syncGhosts(people) {
+    const MAX_GHOSTS = 12;
+    people = people.slice(0, MAX_GHOSTS);
     const ids = new Set(people.map((p) => p.clientId));
 
     for (const [id, ghost] of ghostEls) {
