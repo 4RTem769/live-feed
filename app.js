@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.LIVE_FEED_VERSION = '1.6.3';
+  window.LIVE_FEED_VERSION = '1.6.4';
 
   const $ = (id) => document.getElementById(id);
 
@@ -424,6 +424,7 @@
       id: eventId,
       type: 'screamer',
       target: target.clientId,
+      targetTab: target.tabId,
       targetName: target.name,
       from: myName,
       ts: now,
@@ -617,7 +618,7 @@
         if (data.id && processedEvents.has(data.id)) return;
         if (data.id) processedEvents.add(data.id);
         pushSystem(`😱 ${data.from} наслал скримера на ${data.targetName}`);
-        if (data.target === clientId) playScreamer();
+        if (data.targetTab === tabId || data.target === clientId) playScreamer();
       }
     });
   }
