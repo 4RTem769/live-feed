@@ -329,8 +329,18 @@
     mqtt.on('connect', () => {
       connected = true;
       setConn('live');
-      mqtt.subscribe([`${BASE}/m/+`, `${BASE}/p/+`, `${BASE}/t`], { qos: 1 });
-      publishPresence();
+      online.set(clientId, {
+        clientId,
+        name: myName,
+        color: myColor,
+        tabId,
+        ts: Date.now(),
+        lastSeen: Date.now(),
+      });
+      renderOnline();
+      mqtt.subscribe([`${BASE}/m/+`, `${BASE}/p/+`, `${BASE}/t`], { qos: 1 }, () => {
+        publishPresence();
+      });
       input.focus();
     });
 
