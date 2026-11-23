@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Live-лента — смотри, что происходит</title>
+<meta name="theme-color" content="#0e0f13" />
+<meta name="description" content="Общая live-лента: любой посетитель видит, что происходит на сайте, в реальном времени." />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo">
+      <div class="bolt">⚡</div>
+      <div class="txt">
+        Live-лента
+        <small>смотри, что происходит прямо сейчас</small>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="pill hide-sm">
+      <span class="dot" id="connDot"></span>
+      <span id="connText">подключение…</span>
+    </div>
+    <div class="pill">
+      <span class="dot live"></span>
+      <b id="onlineCount">0</b> онлайн
+    </div>
+    <div class="me-chip">
+      <div class="avatar" id="myAvatar" style="width:30px;height:30px;font-size:12px;border-radius:9px">?</div>
+      <span id="myName">Гость</span>
+      <button id="renameBtn" title="Сменить имя">✎</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <main class="panel">
+      <div class="feed-head">
+        <strong>Общая лента</strong>
+        <span id="msgCount">0 сообщений</span>
+        <span class="live-tag" id="liveTag"><span class="dot live"></span>live</span>
+      </div>
+
+      <div class="feed-wrap">
+        <div class="feed" id="feed"></div>
+        <button class="jump" id="jumpBtn">↓ Новые сообщения</button>
+      </div>
+
+      <div class="typing" id="typing"></div>
+
+      <div class="composer">
+        <form class="composer-inner" id="composer">
+          <textarea id="input" rows="1" placeholder="Напишите что угодно — это увидят все…" maxlength="2000"></textarea>
+          <button class="send" id="sendBtn" type="submit" title="Отправить" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l16-8-6 16-3.5-6.5L4 12z"/></svg>
+          </button>
+        </form>
+        <div class="hint">
+          <span><kbd>Enter</kbd> отправить</span>
+          <span><kbd>Shift</kbd> + <kbd>Enter</kbd> новая строка</span>
+          <span id="chars"></span>
+        </div>
+      </div>
+    </main>
+
+    <aside class="panel sidebar">
+      <div class="side-head">Сейчас на сайте <span class="count" id="sideCount">0</span></div>
+      <ul class="people" id="people"></ul>
+      <div class="side-foot">
+        Каждый видит ленту в реальном времени.<br />
+        Отправьте другу ссылку на эту страницу — и следите вместе.
+      </div>
+    </aside>
+  </div>
+</div>
+
+<div class="modal hidden" id="nameModal">
+  <div class="card">
+    <h1>Как вас зовут?</h1>
+    <p>Имя увидят все, кто сейчас следит за лентой.</p>
+    <label for="nameInput">Ваше имя</label>
+    <input id="nameInput" maxlength="32" placeholder="Например, Аня" autocomplete="nickname" />
+    <button class="go" id="nameGo" disabled>Войти в ленту</button>
+  </div>
+</div>
+
+<script src="vendor/mqtt.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
