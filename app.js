@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  window.LIVE_FEED_VERSION = '1.2.0';
+
   const $ = (id) => document.getElementById(id);
 
   /* ---------- Конфигурация ---------- */
