@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.LIVE_FEED_VERSION = '1.6.2';
+  window.LIVE_FEED_VERSION = '1.6.3';
 
   const $ = (id) => document.getElementById(id);
 
@@ -427,7 +427,7 @@
       targetName: target.name,
       from: myName,
       ts: now,
-    }), { qos: 0 });
+    }), { qos: 1 });
 
     pushSystem(`😱 ${myName} наслал скримера на ${target.name}`);
     if (target.clientId === clientId) playScreamer();
@@ -528,6 +528,7 @@
       clientId: 'lf_' + tabId,
       clean: true,
       keepalive: 30,
+      resubscribe: true,
       reconnectPeriod: 2500,
       connectTimeout: 12000,
       will: {
@@ -631,6 +632,10 @@
       }
     }
     if (changed) renderOnline();
+    // страховка: публичный брокер иногда «теряет» подписки после переподключения
+    if (mqtt && connected) {
+      mqtt.subscribe([`${BASE}/m/+`, `${BASE}/p/+`, `${BASE}/t`, `${BASE}/x`], { qos: 1 });
+    }
   }, 20_000);
 
   setInterval(() => {
