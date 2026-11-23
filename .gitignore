@@ -1,0 +1,4 @@
+.gh_token
+*.log
+Thumbs.db
+.DS_Store
