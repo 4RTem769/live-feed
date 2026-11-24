@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.LIVE_FEED_VERSION = '1.7.9';
+  window.LIVE_FEED_VERSION = '1.8.0';
 
   const $ = (id) => document.getElementById(id);
 
@@ -1132,7 +1132,7 @@
     mqtt = window.mqtt.connect(BROKER, {
       clientId: 'lf_' + tabId,
       clean: true,
-      keepalive: 30,
+      keepalive: 25,
       resubscribe: true,
       reconnectPeriod: 2500,
       connectTimeout: 12000,
@@ -1268,19 +1268,13 @@
     if (changed) renderOnline();
     if (mqtt && connected) {
       mqtt.publish(`${BASE}/hb/${tabId}`, String(Date.now()), { qos: 0 });
-      if (Date.now() - lastEchoAt > 75000) reconnectNow();
+      if (Date.now() - lastEchoAt > 45000) reconnectNow();
     }
   }, 20_000);
 
-  // публичный брокер иногда теряет часть подписок — обновляем их часто
-  setInterval(() => {
-    if (mqtt && connected) {
-      mqtt.subscribe([`${BASE}/#`], { qos: 1 });
-    }
-  }, 5_000);
-
+  // публичный брокер иногда теряет подписку — проверяем по «эху» и переподключаемся
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible' && mqtt && connected && Date.now() - lastEchoAt > 75000) {
+    if (document.visibilityState === 'visible' && mqtt && connected && Date.now() - lastEchoAt > 45000) {
       reconnectNow();
     }
   });
