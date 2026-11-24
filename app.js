@@ -1,13 +1,13 @@
 (() => {
   'use strict';
 
-  window.LIVE_FEED_VERSION = '1.8.0';
+  window.LIVE_FEED_VERSION = '1.8.1';
 
   const $ = (id) => document.getElementById(id);
 
   /* ---------- Конфигурация ---------- */
 
-  const BROKER = 'wss://broker.emqx.io:8084/mqtt';
+  const BROKER = 'wss://test.mosquitto.org:8081/mqtt';
   const ROOM = (() => {
     const raw = new URLSearchParams(location.search).get('room') || 'main';
     return raw.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'main';
