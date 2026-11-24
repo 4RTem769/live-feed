@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.LIVE_FEED_VERSION = '1.8.2';
+  window.LIVE_FEED_VERSION = '1.8.3';
 
   const $ = (id) => document.getElementById(id);
 
@@ -618,7 +618,15 @@
       duration,
       ts: Date.now(),
     });
-    startDuelResend(invitePayload, 9, 1500);
+    const retainInvite = () => {
+      if (!mqtt) return;
+      mqtt.publish(`${BASE}/inv/${target.tabId}`, JSON.stringify(invitePayload()), { qos: 1, retain: true });
+    };
+    retainInvite();
+    startDuelResend(() => {
+      publishX(invitePayload());
+      retainInvite();
+    }, 6, 2000);
 
     pushSystem(`⚔️ ${myName} вызывает ${target.name} на дуэль кликов`);
     showDuelWaiting();
@@ -658,7 +666,11 @@
     }, 15000);
   }
 
-  function renderDuelInvite(data) {
+  function clearRetainedInvite(topic) {
+    if (topic && mqtt) mqtt.publish(topic, '', { qos: 0, retain: true });
+  }
+
+  function renderDuelInvite(data, topic) {
     duelEl.classList.add('on');
     duelEl.innerHTML = '';
 
@@ -681,6 +693,7 @@
         return;
       }
       clearDuelTimers();
+      clearRetainedInvite(topic);
       const payload = () => ({
         type: 'duel-accept',
         duelId: duel.id,
@@ -688,12 +701,15 @@
         name: myName,
         ts: Date.now(),
       });
+      const acceptTopic = `${BASE}/acc/${duel.opponentTab}`;
+      if (mqtt) mqtt.publish(acceptTopic, JSON.stringify(payload()), { qos: 1, retain: true });
       openDuelArena();
       startDuelResend(payload, 10, 1200);
     });
 
     decline.addEventListener('click', () => {
       if (!duel) return;
+      clearRetainedInvite(topic);
       publishX({ type: 'duel-decline', duelId: duel.id, fromId: clientId, name: myName, ts: Date.now() });
       closeDuel();
     });
@@ -704,6 +720,7 @@
 
     setDuelTimer(() => {
       if (duel && duel.state === 'invite') {
+        clearRetainedInvite(topic);
         publishX({ type: 'duel-decline', duelId: duel.id, fromId: clientId, name: myName, ts: Date.now() });
         closeDuel();
       }
@@ -981,8 +998,12 @@
     }
   }
 
-  function onDuelInvite(data) {
+  function onDuelInvite(data, topic) {
     if (data.targetTab !== tabId && data.targetId !== clientId) return;
+    if (data.ts && Date.now() - data.ts > 120000) {
+      clearRetainedInvite(topic);
+      return;
+    }
     if (duel && duel.id === data.duelId) return;
 
     if (!myName) {
@@ -1007,10 +1028,11 @@
       endsAt: 0,
     };
 
-    renderDuelInvite(data);
+    renderDuelInvite(data, topic);
   }
 
-  function onDuelAccept(data) {
+  function onDuelAccept(data, topic) {
+    if (topic && mqtt) mqtt.publish(topic, '', { qos: 0, retain: true });
     if (!duel || duel.id !== data.duelId || duel.state !== 'waiting') return;
     publishXRepeat({ type: 'duel-ack', duelId: data.duelId, fromId: clientId, ts: Date.now() });
     openDuelArena();
@@ -1241,6 +1263,10 @@
             duelResend = null;
           }
         }
+      } else if (topic.startsWith(`${BASE}/inv/`)) {
+        onDuelInvite(data, topic);
+      } else if (topic.startsWith(`${BASE}/acc/`)) {
+        onDuelAccept(data, topic);
       } else if (topic.startsWith(`${BASE}/hb/`)) {
         lastEchoAt = Date.now();
       } else if (topic.startsWith(`${BASE}/s/`)) {
