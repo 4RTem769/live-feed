@@ -866,8 +866,9 @@
             noResult: true,
           });
           pushSystem('⚠️ Итог дуэли не получен — очки не начислены');
+          myDuel.noResult = true;
         }
-      }, 15000);
+      }, 30000);
     } else {
       setDuelTimer(() => {
         if (duel !== myDuel || duel.state !== 'result-wait') return;
@@ -881,12 +882,13 @@
           opponent: myDuel.opponentName,
           noResult: true,
         });
-      }, 16000);
+        myDuel.noResult = true;
+      }, 32000);
     }
   }
 
   function publishDuelEnd(myDuel) {
-    if (!duel || duel !== myDuel || duel.state === 'done' || !duel.results.size) return;
+    if (!duel || duel !== myDuel || !duel.results.size) return;
 
     const aId = clientId;
     const aClicks = duel.results.get(clientId) ?? duel.clicks ?? 0;
@@ -933,7 +935,7 @@
     const active = Boolean(duel && duel.id === payload.duelId);
 
     if (active) {
-      if (duel.state === 'done') return;
+      if (duel.state === 'done' && !duel.noResult) return;
       clearDuelTimers();
       duel.state = 'done';
     }
@@ -973,7 +975,8 @@
   function onDuelResult(data) {
     if (!duel || duel.id !== data.duelId) return;
     duel.results.set(data.clientId, Number(data.clicks) || 0);
-    if (duel.role === 'challenger' && duel.state === 'result-wait' && duel.results.size >= 2) {
+    if (duel.role === 'challenger' && duel.results.size >= 2) {
+      if (duel.state === 'done' && duel.noResult) duel.state = 'result-wait';
       publishDuelEnd(duel);
     }
   }
