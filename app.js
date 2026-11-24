@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.LIVE_FEED_VERSION = '1.8.3';
+  window.LIVE_FEED_VERSION = '1.8.4';
 
   const $ = (id) => document.getElementById(id);
 
