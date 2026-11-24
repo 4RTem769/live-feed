@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.LIVE_FEED_VERSION = '1.6.5';
+  window.LIVE_FEED_VERSION = '1.7.8';
 
   const $ = (id) => document.getElementById(id);
 
@@ -51,6 +51,8 @@
   const ghostLayer = $('ghosts');
   const ghostToggle = $('ghostToggle');
   const screamerEl = $('screamer');
+  const duelEl = $('duel');
+  const scoresEl = $('scores');
   const nameModal = $('nameModal');
   const nameInput = $('nameInput');
   const nameGo = $('nameGo');
@@ -72,6 +74,15 @@
   let screaming = false;
   let screamCtx = null;
   const processedEvents = new Set();
+  let lastEchoAt = 0;
+
+  const scores = new Map();
+  let duel = null;
+  let duelCooldownAt = 0;
+  let duelTimers = [];
+  let duelTick = null;
+  let duelResend = null;
+  let duelKeyHandler = null;
 
   /* ---------- Утилиты ---------- */
 
@@ -434,6 +445,586 @@
     if (target.clientId === clientId) playScreamer();
   }
 
+  /* ---------- Дуэль кликов ---------- */
+
+  function makeNode(tag, cls, text) {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function publishX(payload) {
+    if (!mqtt) return;
+    mqtt.publish(`${BASE}/x`, JSON.stringify(payload), { qos: 1 });
+  }
+
+  function publishXRepeat(payload) {
+    publishX(payload);
+    publishX(payload);
+    publishX(payload);
+  }
+
+  function clearDuelTimers() {
+    for (const id of duelTimers) clearTimeout(id);
+    duelTimers = [];
+    if (duelResend) {
+      clearInterval(duelResend);
+      duelResend = null;
+    }
+    if (duelTick) {
+      clearInterval(duelTick);
+      duelTick = null;
+    }
+    if (duelKeyHandler) {
+      window.removeEventListener('keydown', duelKeyHandler);
+      duelKeyHandler = null;
+    }
+  }
+
+  function startDuelResend(makePayload, times, delay) {
+    if (duelResend) clearInterval(duelResend);
+    let sent = 0;
+    duelResend = setInterval(() => {
+      sent++;
+      if (sent >= times) {
+        clearInterval(duelResend);
+        duelResend = null;
+        return;
+      }
+      publishX(makePayload());
+    }, delay);
+    publishX(makePayload());
+  }
+
+  function setDuelTimer(fn, ms) {
+    const id = setTimeout(fn, ms);
+    duelTimers.push(id);
+    return id;
+  }
+
+  function closeDuel() {
+    clearDuelTimers();
+    duelEl.classList.remove('on');
+    duelEl.innerHTML = '';
+    duel = null;
+  }
+
+  function renderScores() {
+    const list = [...scores.values()]
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    $('scoreCount').textContent = list.length;
+    scoresEl.innerHTML = '';
+
+    if (!list.length) {
+      scoresEl.append(makeNode('li', 'empty-scores', 'Очков пока нет — выиграйте дуэль'));
+      return;
+    }
+
+    list.slice(0, 10).forEach((s, i) => {
+      const li = document.createElement('li');
+      li.append(
+        makeNode('span', 'rank', String(i + 1)),
+        makeNode('span', 'snm', s.name + (s.clientId === clientId ? ' (вы)' : '')),
+        makeNode('span', 'sp', String(s.score))
+      );
+      scoresEl.append(li);
+    });
+  }
+
+  function awardDuelPoint(duelId) {
+    const key = 'livefeed.scored.' + duelId;
+    if (store.get(key) === '1') return;
+    store.set(key, '1');
+
+    const next = (scores.get(clientId)?.score || 0) + 1;
+    scores.set(clientId, { clientId, name: myName, color: myColor, score: next });
+    renderScores();
+
+    if (mqtt && connected) {
+      mqtt.publish(`${BASE}/s/${clientId}`, JSON.stringify({
+        clientId,
+        name: myName,
+        color: myColor,
+        score: next,
+        ts: Date.now(),
+      }), { qos: 1, retain: true });
+    }
+  }
+
+  function runDuelCommand(arg) {
+    const now = Date.now();
+    if (duel) {
+      pushSystem('⚔️ Дуэль уже идёт — сначала закончите текущую');
+      return;
+    }
+    if (now - duelCooldownAt < 10000) {
+      pushSystem('⏳ Подождите пару секунд перед новым вызовом');
+      return;
+    }
+    if (!mqtt || !connected) {
+      pushSystem('⚠️ Нет связи — вызов не отправлен');
+      return;
+    }
+
+    const people = [...online.values()].filter(
+      (p) => p.clientId !== clientId && Date.now() - (p.lastSeen || 0) < 60000
+    );
+    if (!people.length) {
+      pushSystem('😶 Некого вызвать — на сайте больше никого нет');
+      return;
+    }
+
+    const wanted = (arg || '').trim().toLowerCase();
+    let target = null;
+    if (wanted) {
+      target = people.find((p) => p.name.toLowerCase().includes(wanted)) || null;
+      if (!target) {
+        pushSystem(`🤷 Не нашёл гостя «${arg.trim()}»`);
+        return;
+      }
+    } else {
+      target = people[Math.floor(Math.random() * people.length)];
+    }
+
+    duelCooldownAt = now;
+    const duelId = rand();
+    const duration = 10000;
+
+    duel = {
+      id: duelId,
+      role: 'challenger',
+      state: 'waiting',
+      opponentName: target.name,
+      opponentId: target.clientId,
+      opponentTab: target.tabId,
+      duration,
+      clicks: 0,
+      results: new Map(),
+      endsAt: 0,
+    };
+
+    const invitePayload = () => ({
+      type: 'duel-invite',
+      duelId,
+      from: myName,
+      fromId: clientId,
+      fromTab: tabId,
+      targetId: target.clientId,
+      targetTab: target.tabId,
+      targetName: target.name,
+      duration,
+      ts: Date.now(),
+    });
+    startDuelResend(invitePayload, 9, 1500);
+
+    pushSystem(`⚔️ ${myName} вызывает ${target.name} на дуэль кликов`);
+    showDuelWaiting();
+  }
+
+  function showDuelWaiting() {
+    const myDuel = duel;
+    duelEl.classList.add('on');
+    duelEl.innerHTML = '';
+
+    const card = makeNode('div', 'duel-card');
+    card.append(
+      makeNode('div', 'duel-badge', '⚔️'),
+      makeNode('h2', 'duel-title', 'Вызов отправлен'),
+      makeNode('p', 'duel-sub', `Ждём ответа: ${myDuel.opponentName}`)
+    );
+
+    const actions = makeNode('div', 'duel-actions');
+    const cancel = makeNode('button', 'duel-btn', 'Отменить вызов');
+    cancel.addEventListener('click', () => {
+      if (duel !== myDuel) return;
+      publishX({ type: 'duel-decline', duelId: myDuel.id, fromId: clientId, reason: 'cancel', ts: Date.now() });
+      const name = myDuel.opponentName;
+      closeDuel();
+      pushSystem(`⚔️ Вызов для ${name} отменён`);
+    });
+    actions.append(cancel);
+    card.append(actions);
+    duelEl.append(card);
+
+    setDuelTimer(() => {
+      if (duel === myDuel && duel.state === 'waiting') {
+        const name = myDuel.opponentName;
+        closeDuel();
+        pushSystem(`⚔️ ${name} не ответил на вызов`);
+      }
+    }, 15000);
+  }
+
+  function renderDuelInvite(data) {
+    duelEl.classList.add('on');
+    duelEl.innerHTML = '';
+
+    const card = makeNode('div', 'duel-card');
+    card.append(
+      makeNode('div', 'duel-badge', '⚔️'),
+      makeNode('h2', 'duel-title', `${data.from} вызывает вас`),
+      makeNode('p', 'duel-sub', 'Кто больше кликнет за 10 секунд — победителю +1 очко.')
+    );
+
+    const actions = makeNode('div', 'duel-actions');
+    const accept = makeNode('button', 'duel-btn primary', 'Принять');
+    const decline = makeNode('button', 'duel-btn', 'Отклонить');
+
+    accept.addEventListener('click', () => {
+      if (!duel || duel.state !== 'invite') return;
+      if (!connected) {
+        const warn = card.querySelector('.duel-timertext');
+        if (warn) warn.textContent = 'Нет связи с лентой — проверьте интернет и попробуйте ещё раз';
+        return;
+      }
+      clearDuelTimers();
+      const payload = () => ({
+        type: 'duel-accept',
+        duelId: duel.id,
+        fromId: clientId,
+        name: myName,
+        ts: Date.now(),
+      });
+      openDuelArena();
+      startDuelResend(payload, 10, 1200);
+    });
+
+    decline.addEventListener('click', () => {
+      if (!duel) return;
+      publishX({ type: 'duel-decline', duelId: duel.id, fromId: clientId, name: myName, ts: Date.now() });
+      closeDuel();
+    });
+
+    actions.append(accept, decline);
+    card.append(actions, makeNode('div', 'duel-timertext', 'Автопропуск через 12 с'));
+    duelEl.append(card);
+
+    setDuelTimer(() => {
+      if (duel && duel.state === 'invite') {
+        publishX({ type: 'duel-decline', duelId: duel.id, fromId: clientId, name: myName, ts: Date.now() });
+        closeDuel();
+      }
+    }, 12000);
+  }
+
+  function registerDuelClick(counter) {
+    if (!duel || duel.state !== 'arena') return;
+    duel.clicks++;
+    counter.textContent = String(duel.clicks);
+    try { navigator.vibrate && navigator.vibrate(8); } catch {}
+  }
+
+  function openDuelArena() {
+    clearDuelTimers();
+    if (!duel) return;
+
+    duel.state = 'arena';
+    duel.clicks = 0;
+    duel.endsAt = Date.now() + duel.duration;
+    duelEl.classList.add('on');
+    duelEl.innerHTML = '';
+
+    const card = makeNode('div', 'duel-card duel-arena');
+
+    const line = makeNode('div', 'duel-scoreline');
+    const me = makeNode('span');
+    me.append(makeNode('b', null, 'вы'));
+    const opp = makeNode('span');
+    opp.append(makeNode('b', null, duel.opponentName));
+    line.append(me, makeNode('span', null, ' против '), opp);
+
+    const counter = makeNode('div', 'duel-counter', '0');
+    const barWrap = makeNode('div', 'duel-bar');
+    const bar = makeNode('i');
+    barWrap.append(bar);
+
+    const pad = makeNode('button', 'duel-pad', 'ЖМИ!');
+    pad.type = 'button';
+    pad.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      registerDuelClick(counter);
+    });
+
+    const timerText = makeNode('div', 'duel-timertext', 'осталось 10.0 с');
+
+    card.append(
+      makeNode('h2', 'duel-title', '⚔️ Дуэль!'),
+      line,
+      counter,
+      barWrap,
+      pad,
+      timerText
+    );
+    duelEl.append(card);
+
+    duelKeyHandler = (e) => {
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        registerDuelClick(counter);
+      }
+    };
+    window.addEventListener('keydown', duelKeyHandler);
+
+    duelTick = setInterval(() => {
+      if (!duel || duel.state !== 'arena') return;
+      const left = Math.max(0, duel.endsAt - Date.now());
+      bar.style.width = (left / duel.duration) * 100 + '%';
+      timerText.textContent = 'осталось ' + (left / 1000).toFixed(1) + ' с';
+      if (left <= 0) endDuel();
+    }, 100);
+  }
+
+  function showWaitingResult(myDuel) {
+    duelEl.innerHTML = '';
+    const card = makeNode('div', 'duel-card');
+    card.append(
+      makeNode('div', 'duel-badge', '⏳'),
+      makeNode('h2', 'duel-title', 'Время вышло'),
+      makeNode('p', 'duel-sub', `Ваши клики: ${myDuel.clicks}. Ждём итог соперника…`)
+    );
+    duelEl.append(card);
+  }
+
+  function renderDuelCard(opts) {
+    duelEl.classList.add('on');
+    duelEl.innerHTML = '';
+
+    const card = makeNode('div', 'duel-card');
+    card.append(makeNode('div', 'duel-badge', opts.noResult ? '❔' : opts.won ? '🏆' : opts.draw ? '🤝' : '😞'));
+    card.append(makeNode('h2', 'duel-title', opts.noResult
+      ? 'Итог не получен'
+      : opts.won ? 'Победа!' : opts.draw ? 'Ничья' : 'Поражение'));
+
+    const scoreLine = makeNode('div', 'duel-result-score');
+    scoreLine.append(
+      makeNode('span', opts.won ? 'win' : '', String(opts.myClicks)),
+      makeNode('span', '', opts.noResult ? ' : ?' : ' : '),
+      makeNode('span', opts.draw ? '' : 'lose', opts.noResult ? '' : String(opts.oppClicks))
+    );
+    card.append(scoreLine);
+    card.append(makeNode('p', 'duel-sub', opts.noResult
+      ? 'Соперник не прислал результат — очко не начислено'
+      : opts.awarded
+        ? 'Вы получаете +1 очко'
+        : opts.draw
+          ? 'Очков никто не получает'
+          : opts.won
+            ? 'Итог не подтверждён — очко не начислено'
+            : `${opts.opponent} получает +1 очко`));
+
+    const actions = makeNode('div', 'duel-actions');
+    const done = makeNode('button', 'duel-btn primary', 'Продолжить');
+    done.addEventListener('click', () => closeDuel());
+    actions.append(done);
+    card.append(actions);
+    duelEl.append(card);
+  }
+
+  function endDuel() {
+    if (!duel || duel.state !== 'arena') return;
+    clearDuelTimers();
+
+    const myDuel = duel;
+    duel.state = 'result-wait';
+    duel.results.set(clientId, myDuel.clicks);
+
+    const payload = () => ({
+      type: 'duel-result',
+      duelId: myDuel.id,
+      clientId,
+      name: myName,
+      clicks: myDuel.clicks,
+      ts: Date.now(),
+    });
+
+    if (myDuel.role === 'challenger') {
+      publishX(payload());
+      setDuelTimer(() => publishX(payload()), 500);
+    } else {
+      startDuelResend(payload, 12, 1200);
+    }
+
+    showWaitingResult(myDuel);
+
+    if (myDuel.role === 'challenger') {
+      setDuelTimer(() => {
+        if (duel !== myDuel || duel.state !== 'result-wait') return;
+        if (myDuel.results.size >= 2) {
+          publishDuelEnd(myDuel);
+        } else {
+          myDuel.state = 'done';
+          renderDuelCard({
+            myClicks: myDuel.clicks,
+            oppClicks: 0,
+            won: false,
+            draw: false,
+            awarded: false,
+            opponent: myDuel.opponentName,
+            noResult: true,
+          });
+          pushSystem('⚠️ Итог дуэли не получен — очки не начислены');
+        }
+      }, 15000);
+    } else {
+      setDuelTimer(() => {
+        if (duel !== myDuel || duel.state !== 'result-wait') return;
+        myDuel.state = 'done';
+        renderDuelCard({
+          myClicks: myDuel.clicks,
+          oppClicks: 0,
+          won: false,
+          draw: false,
+          awarded: false,
+          opponent: myDuel.opponentName,
+          noResult: true,
+        });
+      }, 16000);
+    }
+  }
+
+  function publishDuelEnd(myDuel) {
+    if (!duel || duel !== myDuel || duel.state === 'done' || !duel.results.size) return;
+
+    const aId = clientId;
+    const aClicks = duel.results.get(clientId) ?? duel.clicks ?? 0;
+
+    let bId = null;
+    let bClicks = 0;
+    for (const [id, clicks] of duel.results) {
+      if (id !== clientId) {
+        bId = id;
+        bClicks = Number(clicks) || 0;
+      }
+    }
+
+    let winnerId = null;
+    if (aClicks > bClicks) winnerId = aId;
+    else if (bClicks > aClicks) winnerId = bId;
+
+    if (bId === null) return;
+
+    const payload = {
+      type: 'duel-end',
+      duelId: duel.id,
+      aId,
+      aName: myName,
+      aClicks,
+      bId,
+      bName: duel.opponentName,
+      bClicks,
+      winnerId,
+      ts: Date.now(),
+    };
+
+    publishXRepeat(payload);
+    handleDuelEnd(payload);
+  }
+
+  function handleDuelEnd(payload) {
+    if (!payload || payload.type !== 'duel-end') return;
+
+    const endKey = 'end:' + payload.duelId;
+    if (processedEvents.has(endKey)) return;
+    processedEvents.add(endKey);
+
+    const active = Boolean(duel && duel.id === payload.duelId);
+
+    if (active) {
+      if (duel.state === 'done') return;
+      clearDuelTimers();
+      duel.state = 'done';
+    }
+
+    const mine = payload.aId === clientId;
+    const myClicks = mine ? payload.aClicks : payload.bClicks;
+    const oppClicks = mine ? payload.bClicks : payload.aClicks;
+    const opponent = mine ? payload.bName : payload.aName;
+    const won = payload.winnerId === clientId;
+    const draw = payload.winnerId === null;
+
+    if (active) {
+      renderDuelCard({ myClicks, oppClicks, won, draw, awarded: won, opponent });
+      if (won) awardDuelPoint(payload.duelId);
+
+      if (won) pushSystem(`🏆 ${myName} побеждает в дуэли с ${opponent} (${myClicks}:${oppClicks})`);
+      else if (draw) pushSystem(`🤝 Ничья в дуэли ${myName} и ${opponent} (${myClicks}:${oppClicks})`);
+      else pushSystem(`⚔️ ${opponent} побеждает в дуэли с ${myName} (${oppClicks}:${myClicks})`);
+      return;
+    }
+
+    const winnerName = payload.winnerId === null
+      ? null
+      : payload.winnerId === payload.aId
+        ? payload.aName
+        : payload.bName;
+
+    if (draw) {
+      pushSystem(`🤝 Ничья в дуэли ${payload.aName} и ${payload.bName} (${payload.aClicks}:${payload.bClicks})`);
+    } else {
+      const w = payload.winnerId === payload.aId ? payload.aClicks : payload.bClicks;
+      const l = payload.winnerId === payload.aId ? payload.bClicks : payload.aClicks;
+      pushSystem(`🏆 ${winnerName} побеждает в дуэли (${w}:${l})`);
+    }
+  }
+
+  function onDuelResult(data) {
+    if (!duel || duel.id !== data.duelId) return;
+    duel.results.set(data.clientId, Number(data.clicks) || 0);
+    if (duel.role === 'challenger' && duel.state === 'result-wait' && duel.results.size >= 2) {
+      publishDuelEnd(duel);
+    }
+  }
+
+  function onDuelInvite(data) {
+    if (data.targetTab !== tabId && data.targetId !== clientId) return;
+    if (duel && duel.id === data.duelId) return;
+
+    if (!myName) {
+      publishX({ type: 'duel-decline', duelId: data.duelId, fromId: clientId, ts: Date.now() });
+      return;
+    }
+    if (duel) {
+      publishX({ type: 'duel-decline', duelId: data.duelId, fromId: clientId, reason: 'busy', ts: Date.now() });
+      return;
+    }
+
+    duel = {
+      id: data.duelId,
+      role: 'target',
+      state: 'invite',
+      opponentName: data.from || 'Гость',
+      opponentId: data.fromId,
+      opponentTab: data.fromTab,
+      duration: Number(data.duration) || 10000,
+      clicks: 0,
+      results: new Map(),
+      endsAt: 0,
+    };
+
+    renderDuelInvite(data);
+  }
+
+  function onDuelAccept(data) {
+    if (!duel || duel.id !== data.duelId || duel.state !== 'waiting') return;
+    publishXRepeat({ type: 'duel-ack', duelId: data.duelId, fromId: clientId, ts: Date.now() });
+    openDuelArena();
+  }
+
+  function onDuelDecline(data) {
+    if (!duel || duel.id !== data.duelId || duel.state !== 'waiting') return;
+    const name = duel.opponentName;
+    const reason = data.reason === 'busy'
+      ? `${name} сейчас занят(а)`
+      : data.reason === 'cancel'
+        ? 'вызов отменён'
+        : `${name} отклонил(а) вызов`;
+    closeDuel();
+    pushSystem('⚔️ ' + reason);
+  }
+
   function renderTyping() {    const names = [...typingUsers.values()];
     typingEl.innerHTML = '';
     if (!names.length) return;
@@ -518,9 +1109,19 @@
 
   /* ---------- MQTT ---------- */
 
-  function connect() {
+  function reconnectNow() {
     if (!myName) return;
-    if (mqtt) {
+    connected = false;
+    setConn('connecting');
+    online.delete(clientId);
+    renderOnline();
+    try { if (mqtt) mqtt.end(true); } catch {}
+    mqtt = null;
+    connect();
+  }
+
+  function connect() {
+    if (!myName) return;    if (mqtt) {
       try { mqtt.end(true); } catch {}
     }
     setConn('connecting');
@@ -551,9 +1152,10 @@
         lastSeen: Date.now(),
       });
       renderOnline();
-      mqtt.subscribe([`${BASE}/m/+`, `${BASE}/p/+`, `${BASE}/t`, `${BASE}/x`], { qos: 1 }, () => {
+      mqtt.subscribe([`${BASE}/#`], { qos: 1 }, () => {
         setConn('live');
         publishPresence();
+        lastEchoAt = Date.now();
       });
       input.focus();
     });
@@ -613,12 +1215,40 @@
         else typingUsers.delete(data.clientId);
         renderTyping();
       } else if (topic === `${BASE}/x`) {
-        if (data.type !== 'screamer') return;
         if (!data.ts || Date.now() - data.ts > 60000) return;
         if (data.id && processedEvents.has(data.id)) return;
-        if (data.id) processedEvents.add(data.id);
-        pushSystem(`😱 ${data.from} наслал скримера на ${data.targetName}`);
-        if (data.targetTab === tabId || data.target === clientId) playScreamer();
+
+        if (data.type === 'screamer') {
+          if (data.id) processedEvents.add(data.id);
+          pushSystem(`😱 ${data.from} наслал скримера на ${data.targetName}`);
+          if (data.targetTab === tabId || data.target === clientId) playScreamer();
+        } else if (data.type === 'duel-invite') {
+          onDuelInvite(data);
+        } else if (data.type === 'duel-accept') {
+          onDuelAccept(data);
+        } else if (data.type === 'duel-decline') {
+          onDuelDecline(data);
+        } else if (data.type === 'duel-result') {
+          onDuelResult(data);
+        } else if (data.type === 'duel-end') {
+          handleDuelEnd(data);
+        } else if (data.type === 'duel-ack') {
+          if (duel && duel.id === data.duelId && duelResend) {
+            clearInterval(duelResend);
+            duelResend = null;
+          }
+        }
+      } else if (topic.startsWith(`${BASE}/hb/`)) {
+        lastEchoAt = Date.now();
+      } else if (topic.startsWith(`${BASE}/s/`)) {
+        if (!data || !data.clientId) return;
+        scores.set(data.clientId, {
+          clientId: data.clientId,
+          name: data.name || 'Гость',
+          color: data.color || colorFromId(data.clientId),
+          score: Number(data.score) || 0,
+        });
+        renderScores();
       }
     });
   }
@@ -633,11 +1263,24 @@
       }
     }
     if (changed) renderOnline();
-    // страховка: публичный брокер иногда «теряет» подписки после переподключения
     if (mqtt && connected) {
-      mqtt.subscribe([`${BASE}/m/+`, `${BASE}/p/+`, `${BASE}/t`, `${BASE}/x`], { qos: 1 });
+      mqtt.publish(`${BASE}/hb/${tabId}`, String(Date.now()), { qos: 0 });
+      if (Date.now() - lastEchoAt > 75000) reconnectNow();
     }
   }, 20_000);
+
+  // публичный брокер иногда теряет часть подписок — обновляем их часто
+  setInterval(() => {
+    if (mqtt && connected) {
+      mqtt.subscribe([`${BASE}/#`], { qos: 1 });
+    }
+  }, 5_000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && mqtt && connected && Date.now() - lastEchoAt > 75000) {
+      reconnectNow();
+    }
+  });
 
   setInterval(() => {
     for (const [id, name] of typingUsers) {
@@ -666,6 +1309,16 @@
       sendBtn.disabled = true;
       stopTyping();
       runScreamerCommand();
+      return;
+    }
+
+    const duelMatch = text.match(/^\/(дуэль|duel)(?:\s+([\s\S]+))?$/i);
+    if (duelMatch) {
+      input.value = '';
+      autosize();
+      sendBtn.disabled = true;
+      stopTyping();
+      runDuelCommand(duelMatch[2] || '');
       return;
     }
 
@@ -817,6 +1470,7 @@
   setConn('connecting');
   renderFeed();
   renderOnline();
+  renderScores();
 
   if (myName) {
     applyName(myName);
