@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  window.LIVE_FEED_VERSION = '1.8.4';
+  window.LIVE_FEED_VERSION = '1.9.0';
 
   const $ = (id) => document.getElementById(id);
 
@@ -53,6 +53,9 @@
   const screamerEl = $('screamer');
   const duelEl = $('duel');
   const scoresEl = $('scores');
+  const shopEl = $('shop');
+  const shopGrid = $('shopGrid');
+  const shopBalance = $('shopBalance');
   const nameModal = $('nameModal');
   const nameInput = $('nameInput');
   const nameGo = $('nameGo');
@@ -83,6 +86,32 @@
   let duelTick = null;
   let duelResend = null;
   let duelKeyHandler = null;
+
+  /* ---------- Магазин: товары ---------- */
+
+  const SHOP_ITEMS = [
+    { id: 'ghost-default', type: 'ghost', name: 'Обычный', emoji: '👻', price: 0, color: '' },
+    { id: 'ghost-ember', type: 'ghost', name: 'Огненный', emoji: '🔥', price: 3, color: '#ff7a45' },
+    { id: 'ghost-ice', type: 'ghost', name: 'Ледяной', emoji: '❄️', price: 3, color: '#63e6ff' },
+    { id: 'ghost-toxic', type: 'ghost', name: 'Токсичный', emoji: '☣️', price: 4, color: '#8dff5c' },
+    { id: 'ghost-royal', type: 'ghost', name: 'Королевский', emoji: '💜', price: 6, color: '#c084fc' },
+    { id: 'badge-none', type: 'badge', name: 'Без значка', emoji: '—', price: 0, badge: '' },
+    { id: 'badge-fire', type: 'badge', name: 'Огонёк', emoji: '🔥', price: 2, badge: '🔥' },
+    { id: 'badge-skull', type: 'badge', name: 'Череп', emoji: '💀', price: 3, badge: '💀' },
+    { id: 'badge-crown', type: 'badge', name: 'Корона', emoji: '👑', price: 5, badge: '👑' },
+  ];
+
+  let profile = (() => {
+    try {
+      const raw = store.get('livefeed.profile.' + ROOM, '');
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (parsed && typeof parsed.score === 'number') {
+        parsed.owned = Array.isArray(parsed.owned) ? parsed.owned : ['ghost-default', 'badge-none'];
+        return parsed;
+      }
+    } catch {}
+    return { score: 0, owned: ['ghost-default', 'badge-none'], ghost: 'ghost-default', badge: 'badge-none' };
+  })();
 
   /* ---------- Утилиты ---------- */
 
@@ -227,7 +256,7 @@
 
       const nm = document.createElement('div');
       nm.className = 'nm';
-      nm.textContent = person.name;
+      nm.textContent = person.name + (person.badge ? ' ' + person.badge : '');
 
       li.append(av, nm);
       if (person.clientId === clientId) {
@@ -296,7 +325,7 @@
 
     const name = document.createElement('span');
     name.className = 'ghost-name';
-    name.textContent = person.name;
+    name.textContent = person.name + (person.badge ? ' ' + person.badge : '');
 
     inner.append(svg, name);
     el.append(inner);
@@ -323,7 +352,9 @@
         ghostEls.set(person.clientId, makeGhost(person));
         continue;
       }
-      if (ghost.name.textContent !== person.name) ghost.name.textContent = person.name;
+      if (ghost.name.textContent !== person.name + (person.badge ? ' ' + person.badge : '')) {
+        ghost.name.textContent = person.name + (person.badge ? ' ' + person.badge : '');
+      }
       if (ghost.color !== person.color) {
         ghost.color = person.color;
         const path = ghost.el.querySelector('path');
@@ -525,13 +556,106 @@
 
     list.slice(0, 10).forEach((s, i) => {
       const li = document.createElement('li');
+      const badge = s.clientId === clientId ? badgeOf(profile.badge) : badgeOf(s.badge);
       li.append(
         makeNode('span', 'rank', String(i + 1)),
-        makeNode('span', 'snm', s.name + (s.clientId === clientId ? ' (вы)' : '')),
+        makeNode('span', 'snm', s.name + (badge ? ' ' + badge : '') + (s.clientId === clientId ? ' (вы)' : '')),
         makeNode('span', 'sp', String(s.score))
       );
       scoresEl.append(li);
     });
+  }
+
+  /* ---------- Магазин ---------- */
+
+  function ghostColor() {
+    const item = SHOP_ITEMS.find((i) => i.id === profile.ghost);
+    return item && item.color ? item.color : myColor;
+  }
+
+  function badgeOf(id) {
+    const item = SHOP_ITEMS.find((i) => i.id === id);
+    return item ? item.badge || '' : '';
+  }
+
+  function saveProfile() {
+    store.set('livefeed.profile.' + ROOM, JSON.stringify(profile));
+  }
+
+  function publishProfile() {
+    saveProfile();
+    if (!mqtt || !connected) return;
+    mqtt.publish(`${BASE}/s/${clientId}`, JSON.stringify({
+      clientId,
+      name: myName,
+      color: ghostColor(),
+      score: profile.score,
+      owned: profile.owned,
+      ghost: profile.ghost,
+      badge: profile.badge,
+      ts: Date.now(),
+    }), { qos: 1, retain: true });
+  }
+
+  function myBadge() {
+    return badgeOf(profile.badge);
+  }
+
+  function renderShop() {
+    shopBalance.textContent = `${profile.score} ${plural(profile.score, 'очко', 'очка', 'очков')}`;
+    shopGrid.innerHTML = '';
+
+    for (const item of SHOP_ITEMS) {
+      const owned = item.price === 0 || profile.owned.includes(item.id);
+      const equipped = item.type === 'ghost'
+        ? profile.ghost === item.id
+        : profile.badge === item.id;
+
+      const card = makeNode('div', 'shop-item');
+      const prev = makeNode('div', 'shop-prev', item.type === 'ghost' ? '👻' : item.emoji);
+      if (item.type === 'ghost' && item.color) prev.style.color = item.color;
+
+      const btn = makeNode('button', 'duel-btn' + (equipped ? '' : ' primary'),
+        equipped ? 'Надето' : owned ? 'Надеть' : 'Купить');
+      btn.disabled = equipped || (!owned && profile.score < item.price);
+      btn.addEventListener('click', () => buyOrEquip(item));
+
+      card.append(
+        prev,
+        makeNode('div', 'shop-name', item.name),
+        makeNode('div', 'shop-price', item.price === 0 ? 'бесплатно' : `${item.price} ${plural(item.price, 'очко', 'очка', 'очков')}`),
+        btn
+      );
+      shopGrid.append(card);
+    }
+  }
+
+  function buyOrEquip(item) {
+    const owned = item.price === 0 || profile.owned.includes(item.id);
+    if (!owned) {
+      if (profile.score < item.price) return;
+      profile.score -= item.price;
+      profile.owned.push(item.id);
+    }
+
+    if (item.type === 'ghost') profile.ghost = item.id;
+    else profile.badge = item.id;
+
+    const me = online.get(clientId);
+    if (me) me.color = ghostColor();
+
+    publishProfile();
+    publishPresence();
+    renderOnline();
+    renderScores();
+    renderShop();
+    syncGhosts([...online.values()]);
+    pushSystem(`🛒 ${myName} ${owned ? 'надел' : 'купил'}: ${item.name}`);
+  }
+
+  function openShop() {
+    renderShop();
+    shopEl.classList.add('on');
   }
 
   function awardDuelPoint(duelId) {
@@ -539,19 +663,20 @@
     if (store.get(key) === '1') return;
     store.set(key, '1');
 
-    const next = (scores.get(clientId)?.score || 0) + 1;
-    scores.set(clientId, { clientId, name: myName, color: myColor, score: next });
-    renderScores();
+    profile.score += 1;
+    scores.set(clientId, {
+      clientId,
+      name: myName,
+      color: ghostColor(),
+      score: profile.score,
+      owned: profile.owned,
+      ghost: profile.ghost,
+      badge: profile.badge,
+    });
 
-    if (mqtt && connected) {
-      mqtt.publish(`${BASE}/s/${clientId}`, JSON.stringify({
-        clientId,
-        name: myName,
-        color: myColor,
-        score: next,
-        ts: Date.now(),
-      }), { qos: 1, retain: true });
-    }
+    publishProfile();
+    renderScores();
+    if (shopEl.classList.contains('on')) renderShop();
   }
 
   function runDuelCommand(arg) {
@@ -663,7 +788,7 @@
         closeDuel();
         pushSystem(`⚔️ ${name} не ответил на вызов`);
       }
-    }, 15000);
+    }, 30000);
   }
 
   function clearRetainedInvite(topic) {
@@ -724,7 +849,7 @@
         publishX({ type: 'duel-decline', duelId: duel.id, fromId: clientId, name: myName, ts: Date.now() });
         closeDuel();
       }
-    }, 12000);
+    }, 25000);
   }
 
   function registerDuelClick(counter) {
@@ -885,7 +1010,7 @@
           pushSystem('⚠️ Итог дуэли не получен — очки не начислены');
           myDuel.noResult = true;
         }
-      }, 30000);
+      }, 45000);
     } else {
       setDuelTimer(() => {
         if (duel !== myDuel || duel.state !== 'result-wait') return;
@@ -900,7 +1025,7 @@
           noResult: true,
         });
         myDuel.noResult = true;
-      }, 32000);
+      }, 50000);
     }
   }
 
@@ -1111,7 +1236,8 @@
     mqtt.publish(`${BASE}/p/${tabId}`, JSON.stringify({
       clientId,
       name: myName,
-      color: myColor,
+      color: ghostColor(),
+      badge: myBadge(),
       ts: Date.now(),
     }), { qos: 0, retain: true });
   }
@@ -1156,7 +1282,7 @@
       clean: false,
       keepalive: 60,
       resubscribe: true,
-      reconnectPeriod: 2500,
+      reconnectPeriod: 1200,
       connectTimeout: 12000,
       will: {
         topic: `${BASE}/p/${tabId}`,
@@ -1180,6 +1306,7 @@
       mqtt.subscribe([`${BASE}/#`], { qos: 1 }, () => {
         setConn('live');
         publishPresence();
+        publishProfile();
         lastEchoAt = Date.now();
       });
       input.focus();
@@ -1229,6 +1356,7 @@
           clientId: data.clientId,
           name: data.name,
           color: data.color,
+          badge: data.badge || '',
           tabId: tab,
           ts: data.ts || Date.now(),
           lastSeen: Date.now(),
@@ -1276,6 +1404,9 @@
           name: data.name || 'Гость',
           color: data.color || colorFromId(data.clientId),
           score: Number(data.score) || 0,
+          owned: Array.isArray(data.owned) ? data.owned : [],
+          ghost: data.ghost || 'ghost-default',
+          badge: data.badge || 'badge-none',
         });
         renderScores();
       }
@@ -1396,6 +1527,7 @@
     $('myAvatar').style.background = myColor;
     $('myAvatar').title = myName;
     document.title = `Live-лента — ${myName}`;
+    if (mqtt && connected) publishProfile();
   }
 
   function openNameModal() {
@@ -1440,6 +1572,12 @@
   });
 
   setGhosts(store.get('livefeed.ghosts', '1') !== '0');
+
+  $('shopBtn').addEventListener('click', openShop);
+  $('shopClose').addEventListener('click', () => shopEl.classList.remove('on'));
+  shopEl.addEventListener('click', (e) => {
+    if (e.target === shopEl) shopEl.classList.remove('on');
+  });
 
   /* ---------- События ---------- */
 

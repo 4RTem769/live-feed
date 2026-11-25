@@ -7,10 +7,22 @@
 <meta name="theme-color" content="#0e0f13" />
 <meta name="description" content="Общая live-лента: любой посетитель видит, что происходит на сайте, в реальном времени." />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%E2%9A%A1%3C/text%3E%3C/svg%3E" />
-<link rel="stylesheet" href="styles.css?v=6" />
+<link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
 <div class="ghost-layer" id="ghosts" aria-hidden="true"></div>
+<div class="shop" id="shop" aria-hidden="true">
+  <div class="shop-card">
+    <div class="shop-head">
+      <h2>🛒 Магазин</h2>
+      <span class="shop-balance" id="shopBalance">0 очков</span>
+      <button class="shop-close" id="shopClose" title="Закрыть">✕</button>
+    </div>
+    <div class="shop-grid" id="shopGrid"></div>
+    <p class="shop-note">Очки зарабатываются в дуэлях кликов. Скины меняют цвет вашего призрака, значки видны рядом с ником.</p>
+  </div>
+</div>
+
 <div class="screamer" id="screamer" aria-hidden="true">
   <img src="assets/screamer.svg?v=3" alt="" />
 </div>
@@ -25,6 +37,7 @@
       </div>
     </div>
     <div class="spacer"></div>
+    <button class="ghost-toggle" id="shopBtn" title="Магазин">🛒</button>
     <button class="ghost-toggle" id="ghostToggle" title="Показать или скрыть призраков" aria-pressed="true">👻</button>
     <div class="pill hide-sm">
       <span class="dot" id="connDot"></span>
@@ -99,6 +112,6 @@
 </div>
 
 <script src="vendor/mqtt.min.js"></script>
-<script src="app.js?v=37"></script>
+<script src="app.js?v=38"></script>
 </body>
 </html>
